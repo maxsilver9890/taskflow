@@ -1,3 +1,4 @@
+
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -74,36 +75,71 @@ function getNodeEnv(value: string | undefined): AppEnv {
   return normalized as AppEnv;
 }
 
+function getRedisUrl(): string {
+  const value = process.env.REDIS_URL?.trim() || "";
+
+  if (!value) {
+    return "";
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Invalid REDIS_URL value. Expected a valid Redis URL.");
+  }
+
+  if (parsed.protocol !== "redis:" && parsed.protocol !== "rediss:") {
+    throw new Error(
+      "Invalid REDIS_URL protocol. Use redis:// or rediss://."
+    );
+  }
+
+  return value;
+}
+
 export const env = {
   nodeEnv: getNodeEnv(process.env.NODE_ENV),
   port: getPort(process.env.PORT?.trim() || "3000"),
+
   databaseUrl: getRequiredEnv("DATABASE_URL"),
   postgresDb: getRequiredEnv("POSTGRES_DB"),
   postgresUser: getRequiredEnv("POSTGRES_USER"),
   postgresPassword: getRequiredEnv("POSTGRES_PASSWORD"),
-  redisHost: getRequiredEnv("REDIS_HOST"),
-  redisPort: getRedisPort(getRequiredEnv("REDIS_PORT")),
+
+  /** Authenticated Redis URL; use rediss:// for Upstash TLS. */
+  redisUrl: getRedisUrl(),
+
+  /** Host and port fallback for local Redis. */
+  redisHost: process.env.REDIS_HOST?.trim() || "localhost",
+  redisPort: getRedisPort(process.env.REDIS_PORT?.trim() || "6379"),
+
   jwtSecret: getRequiredEnv("JWT_SECRET"),
   jwtRefreshSecret: getRequiredEnv("JWT_REFRESH_SECRET"),
+
   /** Access token TTL in seconds (default 15 min). */
   jwtAccessTtlSeconds: getPositiveInt("JWT_ACCESS_TTL_SECONDS", 900),
+
   /** Refresh token TTL in seconds (default 7 days). */
   jwtRefreshTtlSeconds: getPositiveInt("JWT_REFRESH_TTL_SECONDS", 604800),
+
   /** bcrypt cost factor — must be >= 12 per spec. */
   bcryptRounds: getBcryptRounds(),
+
   /** Email provider driver. Supported: "console" (default), "resend". */
   emailProvider: process.env.EMAIL_PROVIDER?.trim() || "console",
-  /**
-   * Resend API key — required when EMAIL_PROVIDER=resend.
-   * Obtain from https://resend.com/api-keys.
-   */
+
+  /** Resend API key — required when EMAIL_PROVIDER=resend. */
   resendApiKey: process.env.RESEND_API_KEY?.trim() || "",
+
   /**
-   * Sender address used for all outgoing email — required when EMAIL_PROVIDER=resend.
-   * Must be a verified domain/address in your Resend account.
-   * Example: "TaskFlow <noreply@yourdomain.com>"
+   * Sender address used for outgoing email when EMAIL_PROVIDER=resend.
+   * Must be verified in your Resend account.
    */
   resendFromAddress: process.env.RESEND_FROM_ADDRESS?.trim() || "",
-  /** Base URL of the frontend app, used to build links embedded in emails (e.g. password reset). */
-  frontendUrl: process.env.FRONTEND_URL?.trim() || "http://localhost:3000"
+
+  /** Frontend base URL used in links embedded in emails. */
+  frontendUrl:
+    process.env.FRONTEND_URL?.trim() || "http://localhost:3000",
 } as const;

@@ -279,32 +279,72 @@ describe("auth.service — login", () => {
     expect(verifyAccessToken(result.accessToken)).toMatchObject({ emailVerified: true });
   });
 
-  it("logs an unverified user in, but embeds emailVerified: false — existing JWT/refresh architecture is unchanged, requireVerifiedEmail is what blocks app access, not login", async () => {
-    const hash = await bcrypt.hash("correct", 4);
-    const userId = "00000000-0000-0000-0000-000000000003";
-    const orgId = "00000000-0000-0000-0000-000000000004";
+  // it("logs an unverified user in, but embeds emailVerified: false — existing JWT/refresh architecture is unchanged, requireVerifiedEmail is what blocks app access, not login", async () => {
+  //   const hash = await bcrypt.hash("correct", 4);
+  //   const userId = "00000000-0000-0000-0000-000000000003";
+  //   const orgId = "00000000-0000-0000-0000-000000000004";
 
-    (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: userId,
-      email: "unverified@example.com",
-      name: "Unverified",
-      passwordHash: hash,
-      emailVerified: false
-    });
-    (db.orgMember.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      organizationId: orgId,
-      role: "ORG_ADMIN"
-    });
-    (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
+  //   (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+  //     id: userId,
+  //     email: "unverified@example.com",
+  //     name: "Unverified",
+  //     passwordHash: hash,
+  //     emailVerified: false
+  //   });
+  //   (db.orgMember.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+  //     organizationId: orgId,
+  //     role: "ORG_ADMIN"
+  //   });
+  //   (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
-    const result = await login(db, { email: "unverified@example.com", password: "correct" });
+  //   const result = await login(db, { email: "unverified@example.com", password: "correct" });
 
-    // Login itself must NOT be blocked for an unverified user...
-    expect(result).toHaveProperty("accessToken");
-    expect(result.user.emailVerified).toBe(false);
-    // ...but the claim that requireVerifiedEmail reads must correctly say so.
-    expect(verifyAccessToken(result.accessToken)).toMatchObject({ emailVerified: false });
+  //   // Login itself must NOT be blocked for an unverified user...
+  //   expect(result).toHaveProperty("accessToken");
+  //   expect(result.user.emailVerified).toBe(false);
+  //   // ...but the claim that requireVerifiedEmail reads must correctly say so.
+  //   expect(verifyAccessToken(result.accessToken)).toMatchObject({ emailVerified: false });
+  // });
+
+it("rejects login for an unverified user with a restricted access token and no refresh token", async () => {
+  const hash = await bcrypt.hash("correct", 4);
+  const userId = "00000000-0000-0000-0000-000000000003";
+  const orgId = "00000000-0000-0000-0000-000000000004";
+
+  (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+    id: userId,
+    email: "unverified@example.com",
+    name: "Unverified",
+    passwordHash: hash,
+    emailVerified: false
   });
+
+  (db.orgMember.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+    organizationId: orgId,
+    role: "ORG_ADMIN"
+  });
+
+  await expect(
+    login(db, {
+      email: "unverified@example.com",
+      password: "correct"
+    })
+  ).rejects.toMatchObject({
+    code: "EMAIL_NOT_VERIFIED",
+    details: expect.objectContaining({
+      accessToken: expect.any(String),
+      tokenType: "Bearer",
+      user: expect.objectContaining({
+        id: userId,
+        email: "unverified@example.com",
+        emailVerified: false
+      })
+    })
+  });
+
+  expect(db.refreshToken.create).not.toHaveBeenCalled();
+});
+
 });
 
 // ─── refresh ──────────────────────────────────────────────────────────────────

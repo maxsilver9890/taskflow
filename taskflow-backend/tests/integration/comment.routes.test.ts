@@ -1,3 +1,4 @@
+
 import {
   afterAll,
   beforeAll,
@@ -35,9 +36,32 @@ async function resetTestDatabase() {
   `);
 }
 
+async function getVerifiedToken(
+  app: ReturnType<typeof createApp>,
+  email: string,
+  password: string,
+  userId: string
+): Promise<string> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: true }
+  });
+
+  const login = await request(app)
+    .post("/auth/login")
+    .send({ email, password });
+
+  if (login.status !== 200) {
+    throw new Error(
+      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
+    );
+  }
+
+  return login.body.accessToken as string;
+}
+
 describe("Comment API integration tests", () => {
   let app: ReturnType<typeof createApp>;
-
   let accessToken: string;
   let taskId: string;
 
@@ -48,16 +72,26 @@ describe("Comment API integration tests", () => {
   beforeEach(async () => {
     await resetTestDatabase();
 
-    const register = await request(app).post("/auth/register").send({
-      email: "comment-test@example.com",
-      name: "Comment Test User",
-      password: "Password123!",
-      organizationName: "Comment Test Organization"
-    });
+    const email = "comment-test@example.com";
+    const password = "Password123!";
+
+    const register = await request(app)
+      .post("/auth/register")
+      .send({
+        email,
+        name: "Comment Test User",
+        password,
+        organizationName: "Comment Test Organization"
+      });
 
     expect(register.status).toBe(201);
 
-    accessToken = register.body.accessToken;
+    accessToken = await getVerifiedToken(
+      app,
+      email,
+      password,
+      register.body.user.id
+    );
 
     const project = await request(app)
       .post("/projects")
@@ -125,6 +159,8 @@ describe("Comment API integration tests", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ content: "Original" });
 
+    expect(created.status).toBe(201);
+
     const edited = await request(app)
       .patch(`/tasks/${taskId}/comments/${created.body.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
@@ -140,6 +176,8 @@ describe("Comment API integration tests", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ content: "To be deleted" });
 
+    expect(created.status).toBe(201);
+
     const deleted = await request(app)
       .delete(`/tasks/${taskId}/comments/${created.body.id}`)
       .set("Authorization", `Bearer ${accessToken}`);
@@ -150,28 +188,41 @@ describe("Comment API integration tests", () => {
       .get(`/tasks/${taskId}/comments`)
       .set("Authorization", `Bearer ${accessToken}`);
 
+    expect(list.status).toBe(200);
     expect(list.body.total).toBe(0);
   });
 
   it("blocks a member of another organization from reading or writing comments", async () => {
-    const otherOrg = await request(app).post("/auth/register").send({
-      email: "other-org@example.com",
-      name: "Other Org Admin",
-      password: "Password123!",
-      organizationName: "Other Org"
-    });
+    const email = "other-org@example.com";
+    const password = "Password123!";
+
+    const otherOrg = await request(app)
+      .post("/auth/register")
+      .send({
+        email,
+        name: "Other Org Admin",
+        password,
+        organizationName: "Other Org"
+      });
 
     expect(otherOrg.status).toBe(201);
 
+    const otherOrgToken = await getVerifiedToken(
+      app,
+      email,
+      password,
+      otherOrg.body.user.id
+    );
+
     const readAttempt = await request(app)
       .get(`/tasks/${taskId}/comments`)
-      .set("Authorization", `Bearer ${otherOrg.body.accessToken}`);
+      .set("Authorization", `Bearer ${otherOrgToken}`);
 
     expect(readAttempt.status).toBe(404);
 
     const writeAttempt = await request(app)
       .post(`/tasks/${taskId}/comments`)
-      .set("Authorization", `Bearer ${otherOrg.body.accessToken}`)
+      .set("Authorization", `Bearer ${otherOrgToken}`)
       .send({ content: "Should not be allowed" });
 
     expect(writeAttempt.status).toBe(404);

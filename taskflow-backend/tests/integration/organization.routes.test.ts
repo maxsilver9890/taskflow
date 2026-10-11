@@ -1,3 +1,4 @@
+
 import {
   afterAll,
   beforeEach,
@@ -35,6 +36,30 @@ async function resetTestDatabase() {
   `);
 }
 
+async function getVerifiedToken(
+  app: ReturnType<typeof createApp>,
+  email: string,
+  password: string,
+  userId: string
+): Promise<string> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: true }
+  });
+
+  const login = await request(app)
+    .post("/auth/login")
+    .send({ email, password });
+
+  if (login.status !== 200) {
+    throw new Error(
+      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
+    );
+  }
+
+  return login.body.accessToken as string;
+}
+
 describe("Organization API integration tests", () => {
   const app = createApp(makeRedisStub());
 
@@ -47,16 +72,28 @@ describe("Organization API integration tests", () => {
   });
 
   it("returns the caller's own organization with a member count", async () => {
-    const register = await request(app).post("/auth/register").send({
-      email: "org-admin@example.com",
-      name: "Org Admin",
-      password: "Password123!",
-      organizationName: "Northstar Labs"
-    });
+    const email = "org-admin@example.com";
+    const password = "Password123!";
+
+    const register = await request(app)
+      .post("/auth/register")
+      .send({
+        email,
+        name: "Org Admin",
+        password,
+        organizationName: "Northstar Labs"
+      });
 
     expect(register.status).toBe(201);
 
-    const { accessToken, organization } = register.body;
+    const accessToken = await getVerifiedToken(
+      app,
+      email,
+      password,
+      register.body.user.id
+    );
+
+    const { organization } = register.body;
 
     const res = await request(app)
       .get("/organizations/me")
@@ -73,20 +110,31 @@ describe("Organization API integration tests", () => {
   });
 
   it("lists every member of the caller's organization", async () => {
-    const register = await request(app).post("/auth/register").send({
-      email: "org-admin2@example.com",
-      name: "Org Admin",
-      password: "Password123!",
-      organizationName: "Blue Orbit Studio"
-    });
+    const email = "org-admin2@example.com";
+    const password = "Password123!";
+
+    const register = await request(app)
+      .post("/auth/register")
+      .send({
+        email,
+        name: "Org Admin",
+        password,
+        organizationName: "Blue Orbit Studio"
+      });
 
     expect(register.status).toBe(201);
 
-    const { accessToken, organization, user } = register.body;
+    const { organization, user } = register.body;
 
-    // A second member is added directly via Prisma rather than through the
-    // API — there's no "invite/join org" endpoint yet (see roadmap item B1),
-    // so this is the only way to produce a multi-member org for the test.
+    const accessToken = await getVerifiedToken(
+      app,
+      email,
+      password,
+      user.id
+    );
+
+    // Add a second member directly through Prisma because this test
+    // does not create the member through an invitation flow.
     const secondUser = await prisma.user.create({
       data: {
         email: "member2@example.com",
@@ -118,27 +166,49 @@ describe("Organization API integration tests", () => {
   });
 
   it("never returns another organization's members", async () => {
-    const orgA = await request(app).post("/auth/register").send({
-      email: "tenant-a@example.com",
-      name: "Tenant A Admin",
-      password: "Password123!",
-      organizationName: "Tenant A Org"
-    });
+    const emailA = "tenant-a@example.com";
+    const emailB = "tenant-b@example.com";
+    const password = "Password123!";
+
+    const orgA = await request(app)
+      .post("/auth/register")
+      .send({
+        email: emailA,
+        name: "Tenant A Admin",
+        password,
+        organizationName: "Tenant A Org"
+      });
 
     expect(orgA.status).toBe(201);
 
-    const orgB = await request(app).post("/auth/register").send({
-      email: "tenant-b@example.com",
-      name: "Tenant B Admin",
-      password: "Password123!",
-      organizationName: "Tenant B Org"
-    });
+    const orgB = await request(app)
+      .post("/auth/register")
+      .send({
+        email: emailB,
+        name: "Tenant B Admin",
+        password,
+        organizationName: "Tenant B Org"
+      });
 
     expect(orgB.status).toBe(201);
 
+    const tokenA = await getVerifiedToken(
+      app,
+      emailA,
+      password,
+      orgA.body.user.id
+    );
+
+    await getVerifiedToken(
+      app,
+      emailB,
+      password,
+      orgB.body.user.id
+    );
+
     const resA = await request(app)
       .get("/organizations/me/members")
-      .set("Authorization", `Bearer ${orgA.body.accessToken}`);
+      .set("Authorization", `Bearer ${tokenA}`);
 
     expect(resA.status).toBe(200);
     expect(resA.body.total).toBe(1);
@@ -146,8 +216,9 @@ describe("Organization API integration tests", () => {
 
     const resAOrg = await request(app)
       .get("/organizations/me")
-      .set("Authorization", `Bearer ${orgA.body.accessToken}`);
+      .set("Authorization", `Bearer ${tokenA}`);
 
+    expect(resAOrg.status).toBe(200);
     expect(resAOrg.body.id).toBe(orgA.body.organization.id);
     expect(resAOrg.body.id).not.toBe(orgB.body.organization.id);
   });

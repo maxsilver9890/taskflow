@@ -1,3 +1,4 @@
+
 import {
   afterAll,
   beforeAll,
@@ -35,9 +36,32 @@ async function resetTestDatabase() {
   `);
 }
 
+async function getVerifiedToken(
+  app: ReturnType<typeof createApp>,
+  email: string,
+  password: string,
+  userId: string
+): Promise<string> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: true }
+  });
+
+  const login = await request(app)
+    .post("/auth/login")
+    .send({ email, password });
+
+  if (login.status !== 200) {
+    throw new Error(
+      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
+    );
+  }
+
+  return login.body.accessToken as string;
+}
+
 describe("Task API integration tests", () => {
   let app: ReturnType<typeof createApp>;
-
   let accessToken: string;
   let organizationId: string;
   let projectId: string;
@@ -61,8 +85,14 @@ describe("Task API integration tests", () => {
 
     expect(register.status).toBe(201);
 
-    accessToken = register.body.accessToken;
     organizationId = register.body.organization.id;
+
+    accessToken = await getVerifiedToken(
+      app,
+      "task-test@example.com",
+      "Password123!",
+      register.body.user.id
+    );
 
     const project = await request(app)
       .post("/projects")
@@ -120,7 +150,6 @@ describe("Task API integration tests", () => {
       });
 
     expect(create.status).toBe(201);
-
     taskId = create.body.id;
 
     const res = await request(app)
@@ -133,7 +162,7 @@ describe("Task API integration tests", () => {
   });
 
   it("lists tasks", async () => {
-    await request(app)
+    const first = await request(app)
       .post("/tasks")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
@@ -143,7 +172,7 @@ describe("Task API integration tests", () => {
         priority: "LOW"
       });
 
-    await request(app)
+    const second = await request(app)
       .post("/tasks")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
@@ -152,6 +181,9 @@ describe("Task API integration tests", () => {
         status: "IN_PROGRESS",
         priority: "HIGH"
       });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
 
     const res = await request(app)
       .get("/tasks?page=1&limit=20")
@@ -176,7 +208,6 @@ describe("Task API integration tests", () => {
       });
 
     expect(create.status).toBe(201);
-
     taskId = create.body.id;
 
     const res = await request(app)
@@ -206,7 +237,6 @@ describe("Task API integration tests", () => {
       });
 
     expect(create.status).toBe(201);
-
     taskId = create.body.id;
 
     const deleteResponse = await request(app)
@@ -242,9 +272,7 @@ describe("Task API integration tests", () => {
     const tenantAProject = await request(app)
       .post("/projects")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({
-        name: "Tenant A Project"
-      });
+      .send({ name: "Tenant A Project" });
 
     expect(tenantAProject.status).toBe(201);
 
@@ -271,7 +299,12 @@ describe("Task API integration tests", () => {
 
     expect(tenantB.status).toBe(201);
 
-    const tenantBToken = tenantB.body.accessToken;
+    const tenantBToken = await getVerifiedToken(
+      app,
+      "tenant-b-task@example.com",
+      "Password123!",
+      tenantB.body.user.id
+    );
 
     const forbidden = await request(app)
       .get(`/tasks/${tenantATask.body.id}`)
@@ -279,12 +312,7 @@ describe("Task API integration tests", () => {
 
     expect(forbidden.status).toBe(403);
     expect(forbidden.body.code).toBe("FORBIDDEN");
-
-    expect(forbidden.body).not.toHaveProperty(
-      "id",
-      tenantATask.body.id
-    );
-
+    expect(forbidden.body).not.toHaveProperty("id", tenantATask.body.id);
     expect(forbidden.body).not.toHaveProperty(
       "title",
       "Tenant A Private Task"

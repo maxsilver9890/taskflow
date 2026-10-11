@@ -1,3 +1,4 @@
+
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 
@@ -14,6 +15,34 @@ function makeRedisStub() {
 
 function authHeader(token: string) {
   return ["Bearer", token].join(" ");
+}
+
+async function verifyUserEmail(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: true }
+  });
+}
+
+async function getVerifiedToken(
+  app: ReturnType<typeof createApp>,
+  email: string,
+  password: string,
+  userId: string
+) {
+  await verifyUserEmail(userId);
+
+  const login = await request(app)
+    .post("/auth/login")
+    .send({ email, password });
+
+  if (login.status !== 200) {
+    throw new Error(
+      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
+    );
+  }
+
+  return login.body.accessToken as string;
 }
 
 async function resetDatabase() {
@@ -46,9 +75,18 @@ describe("User profile API", () => {
       organizationName: "Profile Org"
     });
 
+    expect(register.status).toBe(201);
+
+    const token = await getVerifiedToken(
+      app,
+      "profile@example.com",
+      "Password123!",
+      register.body.user.id
+    );
+
     const res = await request(app)
       .get("/users/me")
-      .set("Authorization", authHeader(register.body.accessToken));
+      .set("Authorization", authHeader(token));
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -76,9 +114,18 @@ describe("User profile API", () => {
       organizationName: "Update Org"
     });
 
+    expect(register.status).toBe(201);
+
+    const token = await getVerifiedToken(
+      app,
+      "update@example.com",
+      "Password123!",
+      register.body.user.id
+    );
+
     const res = await request(app)
       .patch("/users/me")
-      .set("Authorization", authHeader(register.body.accessToken))
+      .set("Authorization", authHeader(token))
       .send({ name: "New Name", id: "spoofed", role: "ORG_ADMIN" });
 
     expect(res.status).toBe(200);
@@ -95,16 +142,33 @@ describe("User profile API", () => {
       organizationName: "Password Org"
     });
 
+    expect(register.status).toBe(201);
+
+    const token = await getVerifiedToken(
+      app,
+      "password@example.com",
+      "Password123!",
+      register.body.user.id
+    );
+
     const bad = await request(app)
       .post("/users/me/change-password")
-      .set("Authorization", authHeader(register.body.accessToken))
-      .send({ currentPassword: "wrong", newPassword: "NewPassword123!" });
+      .set("Authorization", authHeader(token))
+      .send({
+        currentPassword: "wrong",
+        newPassword: "NewPassword123!"
+      });
+
     expect(bad.status).toBe(401);
 
     const changed = await request(app)
       .post("/users/me/change-password")
-      .set("Authorization", authHeader(register.body.accessToken))
-      .send({ currentPassword: "Password123!", newPassword: "NewPassword123!" });
+      .set("Authorization", authHeader(token))
+      .send({
+        currentPassword: "Password123!",
+        newPassword: "NewPassword123!"
+      });
+
     expect(changed.status).toBe(200);
     expect(changed.body).not.toHaveProperty("passwordHash");
 
@@ -112,6 +176,7 @@ describe("User profile API", () => {
       email: "password@example.com",
       password: "NewPassword123!"
     });
+
     expect(login.status).toBe(200);
   });
 });

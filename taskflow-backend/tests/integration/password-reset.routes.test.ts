@@ -1,3 +1,4 @@
+
 import {
   afterAll,
   beforeAll,
@@ -23,18 +24,6 @@ function makeRedisStub() {
   } as unknown as import("ioredis").default;
 }
 
-/**
- * The app wires a real BullMQ Queue backed by the Redis stub above, which
- * can't actually run BullMQ's Lua scripts — the same reason this project's
- * other integration tests never exercise POST /tasks/:id/assign (the other
- * endpoint that enqueues an email job) over HTTP. So here, the HTTP layer is
- * used for everything EXCEPT the enqueue itself: forgotPassword is called
- * directly with this capturing stub standing in for the queue, which still
- * exercises the real service logic and real Prisma writes — only the
- * "send it over BullMQ" step is swapped out. That capture is also the only
- * way to recover the raw (unhashed) reset token a real user would get by
- * email, so the round trip can be driven through the actual HTTP endpoints.
- */
 function makeCapturingQueue() {
   const calls: Array<{ name: string; payload: EmailJobPayload }> = [];
 
@@ -99,7 +88,10 @@ describe("Password reset integration tests", () => {
   it("POST /auth/reset-password returns 401 TOKEN_INVALID for a garbage token", async () => {
     const res = await request(app)
       .post("/auth/reset-password")
-      .send({ token: "not-a-real-token", newPassword: "BrandNewPassword123!" });
+      .send({
+        token: "not-a-real-token",
+        newPassword: "BrandNewPassword123!"
+      });
 
     expect(res.status).toBe(401);
     expect(res.body.code).toBe("TOKEN_INVALID");
@@ -118,17 +110,36 @@ describe("Password reset integration tests", () => {
     const oldPassword = "OriginalPassword123!";
     const newPassword = "BrandNewPassword456!";
 
-    const register = await request(app).post("/auth/register").send({
-      email,
-      name: "Reset Flow User",
-      password: oldPassword,
-      organizationName: "Reset Flow Org"
-    });
+    const register = await request(app)
+      .post("/auth/register")
+      .send({
+        email,
+        name: "Reset Flow User",
+        password: oldPassword,
+        organizationName: "Reset Flow Org"
+      });
 
     expect(register.status).toBe(201);
-    const oldRefreshToken: string = register.body.refreshToken;
+
+    const userId = register.body.user.id as string;
+
+    // This test covers password reset for an already verified account.
+    await prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true }
+    });
+
+    // Obtain a refresh token for the verified account before resetting.
+    const verifiedLogin = await request(app)
+      .post("/auth/login")
+      .send({ email, password: oldPassword });
+
+    expect(verifiedLogin.status).toBe(200);
+
+    const oldRefreshToken: string = verifiedLogin.body.refreshToken;
 
     const { queue, calls } = makeCapturingQueue();
+
     await AuthService.forgotPassword(prisma, queue, { email });
 
     expect(calls).toHaveLength(1);
@@ -136,8 +147,12 @@ describe("Password reset integration tests", () => {
     expect(calls[0].payload.type).toBe("password_reset");
 
     const resetUrl =
-      calls[0].payload.type === "password_reset" ? calls[0].payload.data.resetUrl : "";
+      calls[0].payload.type === "password_reset"
+        ? calls[0].payload.data.resetUrl
+        : "";
+
     const rawToken = new URL(resetUrl).searchParams.get("token");
+
     expect(rawToken).toBeTruthy();
 
     const reset = await request(app)
@@ -150,24 +165,31 @@ describe("Password reset integration tests", () => {
     const oldLogin = await request(app)
       .post("/auth/login")
       .send({ email, password: oldPassword });
+
     expect(oldLogin.status).toBe(401);
 
-    // New password works.
+    // New password works for the verified account.
     const newLogin = await request(app)
       .post("/auth/login")
       .send({ email, password: newPassword });
+
     expect(newLogin.status).toBe(200);
 
     // Resetting the password revokes every pre-existing refresh token.
     const refreshAttempt = await request(app)
       .post("/auth/refresh")
       .send({ refreshToken: oldRefreshToken });
+
     expect(refreshAttempt.status).toBe(401);
 
     // The reset token itself is single-use.
     const replay = await request(app)
       .post("/auth/reset-password")
-      .send({ token: rawToken, newPassword: "AnotherPassword789!" });
+      .send({
+        token: rawToken,
+        newPassword: "AnotherPassword789!"
+      });
+
     expect(replay.status).toBe(401);
     expect(replay.body.code).toBe("TOKEN_INVALID");
   });
