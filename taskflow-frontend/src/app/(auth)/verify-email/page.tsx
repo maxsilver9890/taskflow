@@ -1,147 +1,127 @@
 "use client";
 
 import { AlertCircle, ArrowRight, CheckCircle2, Mail } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { onAuthStateChanged, sendEmailVerification, type User } from "firebase/auth";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Input";
-import { forceRefreshTokens } from "@/lib/api/client";
-import { ApiError, errorMessage } from "@/lib/api/errors";
-import { authApi } from "@/lib/api/services";
-import { writeSession } from "@/lib/auth/session";
-import { useAuth } from "@/lib/auth/AuthProvider";
-
-const PENDING_EMAIL_KEY = "taskflow.pendingRegistrationEmail";
+import { errorMessage } from "@/lib/api/errors";
+import { firebaseAuth } from "@/lib/firebase";
+import {
+  exchangeFirebaseUser,
+  pendingRegistrationFromStorage,
+  verificationActionSettings,
+} from "@/lib/auth/AuthProvider";
 
 export default function VerifyEmailPage() {
-  const { status, user, emailVerified, verifyEmail, resendVerification, logout } = useAuth();
   const router = useRouter();
-  const [otp, setOtp] = useState("");
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [pendingLoaded, setPendingLoaded] = useState(false);
-  const [verifying, setVerifying] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [locked, setLocked] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const [resendNotice, setResendNotice] = useState<string | null>(null);
-  const justVerified = useRef(false);
-  const success = status === "authenticated" && emailVerified;
+  const [notice, setNotice] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    setPendingEmail(sessionStorage.getItem(PENDING_EMAIL_KEY));
-    setPendingLoaded(true);
-  }, []);
+    let active = true;
 
-  useEffect(() => {
-    if (!pendingLoaded) return;
-    if (status === "unauthenticated" && !pendingEmail) {
-      router.replace("/login");
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      if (!active) return;
+      setFirebaseUser(user);
+      setEmail(user?.email ?? pendingRegistrationFromStorage()?.email ?? null);
+
+      if (!user) {
+        setChecking(false);
+        return;
+      }
+
+      try {
+        await user.reload();
+        if (!active) return;
+
+        setEmail(user.email);
+        if (user.emailVerified) {
+          await exchangeFirebaseUser(user, pendingRegistrationFromStorage());
+          if (!active) return;
+          setVerified(true);
+          router.replace("/dashboard");
+          return;
+        }
+      } catch (err) {
+        if (active) setError(errorMessage(err));
+      } finally {
+        if (active) setChecking(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [router]);
+
+  async function resendVerificationLink() {
+    setError(null);
+    setNotice(null);
+
+    const currentUser = firebaseAuth.currentUser;
+    if (!currentUser) {
+      setError("Sign in first to request a new verification link.");
       return;
     }
-    if (success) {
-      if (!justVerified.current) {
-        router.replace("/dashboard");
-        return;
-      }
-      const timer = window.setTimeout(() => router.replace("/dashboard"), 700);
-      return () => window.clearTimeout(timer);
-    }
-  }, [pendingLoaded, pendingEmail, status, success, router]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = window.setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [cooldown]);
-
-  async function recoverFromAlreadyVerified() {
+    setSending(true);
     try {
-      await forceRefreshTokens();
-    } catch {
-      // The existing session can refresh normally on its next request.
-    }
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setError(null);
-    if (otp.length !== 6) {
-      setError("Enter the 6-digit code from your email.");
-      return;
-    }
-
-    setVerifying(true);
-    try {
-      justVerified.current = true;
-      if (pendingEmail) {
-        const result = await authApi.verifyRegistration({ email: pendingEmail, otp });
-        writeSession({
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-          user: result.user,
-          organizationName: result.organization.name,
-        });
-        sessionStorage.removeItem(PENDING_EMAIL_KEY);
-      } else {
-        await verifyEmail(otp);
-      }
+      await sendEmailVerification(currentUser, verificationActionSettings());
+      setNotice("A new verification link has been sent. Check your inbox and spam folder.");
     } catch (err) {
-      if (err instanceof ApiError && err.code === "EMAIL_ALREADY_VERIFIED") {
-        await recoverFromAlreadyVerified();
-        return;
-      }
-      if (err instanceof ApiError && err.code === "OTP_LOCKED") setLocked(true);
-      setError(errorMessage(err));
-      setOtp("");
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function handleResend() {
-    setError(null);
-    setResendNotice(null);
-    setResending(true);
-    try {
-      const result = pendingEmail
-        ? await authApi.resendRegistration(pendingEmail)
-        : await resendVerification();
-      setLocked(false);
-      setOtp("");
-      setCooldown(result.cooldownSeconds);
-      setResendNotice("If your registration is pending, a new code has been requested.");
-    } catch (err) {
-      if (err instanceof ApiError && err.code === "EMAIL_ALREADY_VERIFIED") {
-        await recoverFromAlreadyVerified();
-        return;
-      }
-      if (err instanceof ApiError && err.code === "OTP_RESEND_COOLDOWN") {
-        const retryAfter = err.details.retryAfterSeconds;
-        if (typeof retryAfter === "number") setCooldown(retryAfter);
-      }
       setError(errorMessage(err));
     } finally {
-      setResending(false);
+      setSending(false);
     }
   }
 
-  async function handleWrongAccount() {
-    await logout();
-    router.replace("/login");
+  async function checkVerificationStatus() {
+    setError(null);
+    setChecking(true);
+    try {
+      const currentUser = firebaseAuth.currentUser;
+      if (!currentUser) {
+        setError("No Firebase session was found in this browser. Sign in after verifying your email.");
+        return;
+      }
+
+      await currentUser.reload();
+      if (!currentUser.emailVerified) {
+        setError("Your email is not verified yet. Open the verification link from your inbox, then check again.");
+        return;
+      }
+
+      await exchangeFirebaseUser(currentUser, pendingRegistrationFromStorage());
+      setVerified(true);
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setChecking(false);
+    }
   }
 
-  if (!pendingLoaded) return null;
-
-  if (success) {
+  if (checking || verified) {
     return (
       <div className="tf-slide-in text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-soft text-brand">
           <CheckCircle2 className="size-6" />
         </div>
-        <h1 className="mt-4 font-display text-[22px] font-bold text-ink">Email verified</h1>
-        <p className="mt-2 text-[13.5px] text-ink-3">Taking you into TaskFlow…</p>
+        <h1 className="mt-4 font-display text-[22px] font-bold text-ink">
+          {verified ? "Email verified" : "Checking verification"}
+        </h1>
+        <p className="mt-2 text-[13.5px] text-ink-3">
+          {verified ? "Taking you into TaskFlow…" : "Checking your Firebase account…"}
+        </p>
       </div>
     );
   }
@@ -151,59 +131,51 @@ export default function VerifyEmailPage() {
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-soft text-brand">
         <Mail className="size-6" />
       </div>
-      <h1 className="mt-4 text-center font-display text-[22px] font-bold text-ink">Verify your email</h1>
+      <h1 className="mt-4 text-center font-display text-[22px] font-bold text-ink">
+        Verify your email
+      </h1>
       <p className="mt-2 text-center text-[13.5px] text-ink-3">
-        Enter the 6-digit code sent to <span className="font-medium text-ink">{pendingEmail ?? user?.email ?? "your email address"}</span>. It expires in 10 minutes.
+        {email
+          ? <>We sent a verification link to <span className="font-medium text-ink">{email}</span>. Open that link, then return here.</>
+          : "Open the Firebase verification link from your email. If you verified on another device, sign in to TaskFlow afterward."}
       </p>
 
-      <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
-        <div>
-          <Label htmlFor="otp">Verification code</Label>
-          <Input
-            id="otp"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]*"
-            maxLength={6}
-            required
-            autoFocus
-            disabled={locked}
-            value={otp}
-            onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="123456"
-            className="text-center text-[22px] font-semibold tracking-[0.5em]"
-          />
+      {error && (
+        <div className="mt-5 flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="flex items-start gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-[13px] text-danger">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            {error}
-          </div>
-        )}
+      {notice && (
+        <p className="mt-4 text-center text-[12.5px] text-brand">{notice}</p>
+      )}
 
-        <Button type="submit" className="w-full" size="lg" loading={verifying} disabled={locked || otp.length !== 6}>
-          Verify <ArrowRight className="size-4" />
+      <div className="mt-6 space-y-3">
+        <Button type="button" className="w-full" size="lg" onClick={() => void checkVerificationStatus()}>
+          I&apos;ve verified my email <ArrowRight className="size-4" />
         </Button>
-      </form>
 
-      <div className="mt-5 text-center text-[13px]">
-        {resendNotice && !error && <p className="mb-2 text-[12.5px] text-brand">{resendNotice}</p>}
-        {cooldown > 0 ? (
-          <p className="text-ink-3">Resend code in {cooldown}s</p>
-        ) : (
-          <button type="button" onClick={() => void handleResend()} disabled={resending} className="font-medium text-brand hover:underline disabled:cursor-not-allowed disabled:opacity-50">
-            {resending ? "Sending…" : "Resend code"}
-          </button>
+        {firebaseUser && !firebaseUser.emailVerified && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            size="lg"
+            loading={sending}
+            onClick={() => void resendVerificationLink()}
+          >
+            Resend verification link
+          </Button>
         )}
       </div>
 
-      {!pendingEmail && (
-        <p className="mt-6 text-center text-[13px] text-ink-3">
-          Wrong account?{" "}
-          <button type="button" onClick={() => void handleWrongAccount()} className="font-medium text-brand hover:underline">Sign out</button>
-        </p>
-      )}
+      <p className="mt-6 text-center text-[13px] text-ink-3">
+        Already verified?{" "}
+        <Link href="/login" className="font-medium text-brand hover:underline">
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }

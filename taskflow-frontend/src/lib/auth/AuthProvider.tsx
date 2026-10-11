@@ -1,10 +1,26 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updateProfile,
+  type User as FirebaseUser,
+} from "firebase/auth";
 
 import { authApi } from "@/lib/api/services";
 import type { AuthUser, LoginInput, OrgRole, RegisterInput } from "@/lib/api/types";
+import { firebaseAuth } from "@/lib/firebase";
 import {
   clearSession,
   decodeAccessToken,
@@ -16,6 +32,14 @@ import {
   writeSession,
 } from "./session";
 
+const PENDING_REGISTRATION_KEY = "taskflow.pendingFirebaseRegistration";
+
+type PendingRegistration = {
+  email: string;
+  name: string;
+  organizationName: string;
+};
+
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 interface AuthContextValue {
@@ -25,33 +49,98 @@ interface AuthContextValue {
   organizationName: string | null;
   role: OrgRole | null;
   isAdmin: boolean;
-  /**
-   * The authoritative verification flag for the current session, decoded
-   * straight from the access token's JWT claim (see TokenClaims). `true`
-   * while status isn't "authenticated" so callers that only care about
-   * blocking unverified *authenticated* users don't need a redundant status
-   * check.
-   */
   emailVerified: boolean;
   login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<boolean>;
+  register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   switchOrganization: (organizationId: string) => Promise<void>;
-  /** Redeem a 6-digit OTP. On success, writes the fresh (now-verified) token pair. */
+  /** Legacy OTP verification remains available for existing accounts. */
   verifyEmail: (otp: string) => Promise<void>;
-  /** Queue a new OTP. Returns the server-authoritative cooldown in seconds. */
+  /** Legacy OTP resend remains available for existing accounts. */
   resendVerification: () => Promise<{ cooldownSeconds: number }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
 const noopSubscribe = () => () => {};
+
+function verificationActionSettings() {
+  return {
+    // Firebase verifies the address on its hosted action page, then returns
+    // the user to this page so TaskFlow can exchange the verified ID token.
+    url: `${window.location.origin}/verify-email`,
+  };
+}
+
+function pendingRegistrationFromStorage(): PendingRegistration | null {
+  try {
+    const value = sessionStorage.getItem(PENDING_REGISTRATION_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<PendingRegistration>;
+    if (
+      typeof parsed.email !== "string" ||
+      typeof parsed.name !== "string" ||
+      typeof parsed.organizationName !== "string"
+    ) return null;
+    return {
+      email: parsed.email,
+      name: parsed.name,
+      organizationName: parsed.organizationName,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function exchangeFirebaseUser(user: FirebaseUser, pending?: PendingRegistration | null) {
+  await user.reload();
+  if (!user.emailVerified || !user.email) {
+    throw new Error("Please verify your email using the link we sent before signing in.");
+  }
+
+  const idToken = await user.getIdToken(true);
+  const result = await authApi.firebaseExchange({
+    idToken,
+    ...(pending?.name ? { name: pending.name } : user.displayName ? { name: user.displayName } : {}),
+    ...(pending?.organizationName ? { organizationName: pending.organizationName } : {}),
+  });
+
+  writeSession({
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    user: result.user,
+    organizationName: result.organization.name,
+  });
+
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
+    sessionStorage.removeItem("taskflow.pendingRegistrationEmail");
+  }
+}
+
+function isFirebaseCredentialFailure(error: unknown): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("code" in error)
+  ) {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+
+  return (
+    typeof code === "string" &&
+    [
+      "auth/invalid-credential",
+      "auth/user-not-found",
+      "auth/wrong-password",
+    ].includes(code)
+  );
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
-  // `hydrated` is false during SSR/hydration and true afterwards, so we never
-  // flash the login screen for a user who is actually signed in.
   const hydrated = useSyncExternalStore(
     noopSubscribe,
     () => true,
@@ -59,42 +148,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const raw = useSyncExternalStore(subscribeSession, readSessionRaw, () => null);
   const session = useMemo(() => parseSession(raw), [raw]);
-  const claims = useMemo(() => (session ? decodeAccessToken(session.accessToken) : null), [session]);
-
-  const login = useCallback(
-    async (input: LoginInput) => {
-      const res = await authApi.login(input);
-      queryClient.clear();
-      writeSession({ accessToken: res.accessToken, refreshToken: res.refreshToken, user: res.user });
-    },
-    [queryClient],
+  const claims = useMemo(
+    () => (session ? decodeAccessToken(session.accessToken) : null),
+    [session],
   );
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const res = await authApi.register(input);
-    if (res.legacyRecovery && res.accessToken && res.refreshToken && res.user && res.organization) {
+  const login = useCallback(async (input: LoginInput) => {
+    const email = input.email.trim().toLowerCase();
+
+    try {
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email, input.password);
+      await credential.user.reload();
+
+      if (!credential.user.emailVerified) {
+        throw new Error("Your email isn't verified yet. Open the verification link we sent to your inbox, then sign in again.");
+      }
+
       queryClient.clear();
-      writeSession({
-        accessToken: res.accessToken,
-        refreshToken: res.refreshToken,
-        user: res.user,
-        organizationName: res.organization.name,
-      });
-      return true;
+      await exchangeFirebaseUser(credential.user, pendingRegistrationFromStorage());
+      return;
+    } catch (error) {
+      // Preserve sign-in for legacy TaskFlow accounts that have not been
+      // migrated to Firebase. Do not fall back for unverified Firebase users
+      // or for backend errors such as EMAIL_IN_USE.
+      if (!isFirebaseCredentialFailure(error)) {
+      throw error;
     }
-    return false;
+    }
+
+    const res = await authApi.login({ email, password: input.password });
+    queryClient.clear();
+    writeSession({
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+      user: res.user,
+    });
   }, [queryClient]);
+
+  const register = useCallback(async (input: RegisterInput) => {
+    const email = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    const organizationName = input.organizationName.trim();
+
+    const credential = await createUserWithEmailAndPassword(firebaseAuth, email, input.password);
+
+    try {
+      await updateProfile(credential.user, { displayName: name });
+      sessionStorage.setItem(PENDING_REGISTRATION_KEY, JSON.stringify({
+        email,
+        name,
+        organizationName,
+      } satisfies PendingRegistration));
+      sessionStorage.setItem("taskflow.pendingRegistrationEmail", email);
+      await sendEmailVerification(credential.user, verificationActionSettings());
+    } catch (error) {
+      // Keep the Firebase account so the user can retry sending the
+      // verification email rather than attempting to register it again.
+      throw new Error(
+        error instanceof Error
+          ? `Your account was created, but we couldn't send the verification email: ${error.message}`
+          : "Your account was created, but we couldn't send the verification email. Try again from the verification page.",
+      );
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     const current = parseSession(readSessionRaw());
     if (current) {
       try {
-        // Revokes the refresh token server-side. Logout is idempotent; failures
-        // (offline, etc.) must never block signing out locally.
         await authApi.logout(current.refreshToken);
       } catch {
-        /* ignore */
+        /* local sign-out must still work when the API is unavailable */
       }
+    }
+    try {
+      await firebaseSignOut(firebaseAuth);
+    } catch {
+      /* Firebase sign-out must not block local sign-out */
     }
     clearSession();
     queryClient.clear();
@@ -102,9 +232,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyEmail = useCallback(async (otp: string) => {
     const res = await authApi.verifyEmail({ otp });
-    // A fresh token pair with emailVerified: true already baked into its
-    // claims — writing it is what flips `emailVerified` below reactively,
-    // without a page reload or a separate profile refetch.
     updateTokens({ accessToken: res.accessToken, refreshToken: res.refreshToken });
   }, []);
 
@@ -116,15 +243,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchOrganization = useCallback(async (organizationId: string) => {
     const res = await authApi.selectOrganization(organizationId);
     updateActiveOrganization(res, res.organization);
-    // Organization-scoped keys intentionally stay stable across orgs. Drop
-    // the old snapshots and immediately refetch active views under the new
-    // token rather than allowing data from the previous org to linger.
     queryClient.clear();
     await queryClient.refetchQueries({ type: "active" });
   }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(() => {
-    const status: AuthStatus = !hydrated ? "loading" : session ? "authenticated" : "unauthenticated";
+    const status: AuthStatus = !hydrated
+      ? "loading"
+      : session
+        ? "authenticated"
+        : "unauthenticated";
+
     return {
       status,
       user: session?.user ?? null,
@@ -140,7 +269,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyEmail,
       resendVerification,
     };
-  }, [hydrated, session, claims, login, register, logout, switchOrganization, verifyEmail, resendVerification]);
+  }, [
+    hydrated,
+    session,
+    claims,
+    login,
+    register,
+    logout,
+    switchOrganization,
+    verifyEmail,
+    resendVerification,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -151,9 +290,11 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-/** For code that only renders when authenticated (inside the app shell). */
 export function useCurrentUser(): AuthUser {
   const { user } = useAuth();
   if (!user) throw new Error("useCurrentUser called while signed out");
   return user;
 }
+
+/** Shared helpers for the Firebase verification page. */
+export { exchangeFirebaseUser, pendingRegistrationFromStorage, verificationActionSettings };

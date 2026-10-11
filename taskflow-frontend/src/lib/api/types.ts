@@ -40,6 +40,18 @@ export interface LoginResponse extends TokenPair {
   user: AuthUser;
 }
 
+/** POST /auth/firebase-exchange */
+export interface FirebaseExchangeInput {
+  idToken: string;
+  name?: string;
+  organizationName?: string;
+}
+
+export interface FirebaseExchangeResponse extends TokenPair {
+  user: AuthUser;
+  organization: { id: string; name: string };
+}
+
 export interface OrganizationMembership {
   id: string;
   name: string;

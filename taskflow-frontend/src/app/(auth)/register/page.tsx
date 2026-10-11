@@ -57,15 +57,12 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const email = form.email.trim().toLowerCase();
-      const legacyRecovery = await register({
+      await register({
         name: form.name.trim(),
         email,
         organizationName: form.organizationName.trim(),
         password: form.password,
       });
-      // New registrations have no session until verification. Legacy unverified accounts use the existing authenticated recovery flow.
-      if (!legacyRecovery) sessionStorage.setItem("taskflow.pendingRegistrationEmail", email);
-      else sessionStorage.removeItem("taskflow.pendingRegistrationEmail");
       router.replace("/verify-email");
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fieldErrors).length > 0) {

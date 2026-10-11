@@ -6,6 +6,8 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   ForgotPasswordInput,
+  FirebaseExchangeInput,
+  FirebaseExchangeResponse,
   JobInfo,
   LoginInput,
   LoginResponse,
@@ -49,6 +51,8 @@ import type {
 export const authApi = {
   login: (input: LoginInput) =>
     api<LoginResponse>("/auth/login", { method: "POST", body: input, anonymous: true }),
+  firebaseExchange: (input: FirebaseExchangeInput) =>
+    api<FirebaseExchangeResponse>("/auth/firebase-exchange", { method: "POST", body: input, anonymous: true }),
   register: (input: RegisterInput) =>
     api<RegisterResponse>("/auth/register", { method: "POST", body: input, anonymous: true }),
   verifyRegistration: (input: VerifyRegistrationInput) =>
