@@ -50,6 +50,7 @@ interface AuthContextValue {
   role: OrgRole | null;
   isAdmin: boolean;
   emailVerified: boolean;
+  resendFirebaseVerification: (input: LoginInput) => Promise<void>;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
@@ -185,6 +186,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [queryClient]);
 
+  const resendFirebaseVerification = useCallback(
+    async (input: LoginInput) => {
+      const credential = await signInWithEmailAndPassword(
+        firebaseAuth,
+        input.email.trim().toLowerCase(),
+        input.password,
+      );
+
+      await credential.user.reload();
+
+      if (credential.user.emailVerified) {
+        throw new Error("Your email is already verified. Please sign in.");
+      }
+
+      await sendEmailVerification(
+        credential.user,
+        verificationActionSettings(),
+      );
+    },
+    [],
+  );
+
+
   const register = useCallback(async (input: RegisterInput) => {
     const email = input.email.trim().toLowerCase();
     const name = input.name.trim();
@@ -263,6 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: (claims?.role ?? session?.activeOrganization?.role) === "ORG_ADMIN",
       emailVerified: claims?.emailVerified ?? true,
       login,
+      resendFirebaseVerification,
       register,
       logout,
       switchOrganization,
@@ -274,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     claims,
     login,
+    resendFirebaseVerification,
     register,
     logout,
     switchOrganization,

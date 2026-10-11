@@ -20,27 +20,59 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, resendFirebaseVerification } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [canResend, setCanResend] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
+  
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
+    setCanResend(false);
     setLoading(true);
+
     try {
       await login({ email: email.trim(), password });
       router.replace(params.get("next") || "/dashboard");
     } catch (err) {
-      setError(errorMessage(err));
+      const message = errorMessage(err);
+      setError(message);
+      setCanResend(message.toLowerCase().includes("isn't verified"));
     } finally {
       setLoading(false);
     }
   }
+
+  async function resendVerificationLink() {
+    setError(null);
+    setNotice(null);
+    setResending(true);
+
+    try {
+      await resendFirebaseVerification({
+        email: email.trim(),
+        password,
+      });
+
+      setNotice(
+        "Verification email requested. Check your inbox and spam folder.",
+      );
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setResending(false);
+    }
+  }
+
+
 
   function fillDemo(demoEmail: string) {
     setEmail(demoEmail);
@@ -90,6 +122,24 @@ function LoginForm() {
             {error}
           </div>
         )}
+
+        {notice && (
+          <p className="text-[13px] text-emerald-400" role="status">
+            {notice}
+          </p>
+        )}
+
+        {canResend && (
+          <button
+            type="button"
+            onClick={resendVerificationLink}
+            disabled={resending || loading || !email.trim() || !password}
+            className="w-full text-center text-[13px] font-medium text-brand hover:underline disabled:opacity-50"
+          >
+            {resending ? "Sending verification link..." : "Resend verification link"}
+          </button>
+        )}
+
 
         <Button type="submit" className="w-full" size="lg" loading={loading}>
           Sign in
