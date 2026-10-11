@@ -128,3 +128,13 @@ export const resendRegistrationSchema = z.object({
 
 export type VerifyRegistrationBody = z.infer<typeof verifyRegistrationSchema>["body"];
 export type ResendRegistrationBody = z.infer<typeof resendRegistrationSchema>["body"];
+export const firebaseExchangeSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1, "Firebase ID token is required"),
+    name: z.string().trim().min(1).max(255).optional(),
+    organizationName: z.string().trim().min(1).max(255).optional(),
+  }),
+});
+
+export type FirebaseExchangeBody =
+  z.infer<typeof firebaseExchangeSchema>["body"];

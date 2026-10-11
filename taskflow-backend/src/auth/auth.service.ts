@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-
+import { firebaseAdminAuth } from "../lib/firebase-admin.js";
+import type { FirebaseExchangeBody } from "./auth.schemas.js";
 import bcrypt from "bcrypt";
 import type { PrismaClient } from "@prisma/client";
 import type { Queue } from "bullmq";
@@ -665,5 +666,132 @@ export async function resendVerification(
   return {
     message: "Verification code sent.",
     cooldownSeconds: OTP_RESEND_COOLDOWN_MS / 1000
+  };
+}
+
+export async function firebaseExchange(
+  db: PrismaClient,
+  body: FirebaseExchangeBody
+) {
+  let decoded;
+
+  try {
+    decoded = await firebaseAdminAuth.verifyIdToken(body.idToken, true);
+  } catch {
+    throw AuthErrors.INVALID_CREDENTIALS();
+  }
+
+  if (!decoded.email || decoded.email_verified !== true) {
+    throw AuthErrors.INVALID_CREDENTIALS();
+  }
+
+  const email = decoded.email.trim().toLowerCase();
+
+  // Returning Firebase users: find their existing TaskFlow account.
+  const existingFirebaseUser = await db.user.findUnique({
+    where: { firebaseUid: decoded.uid }
+  });
+
+  if (existingFirebaseUser) {
+    const membership = await db.orgMember.findFirst({
+      where: { userId: existingFirebaseUser.id },
+      orderBy: { createdAt: "asc" },
+      select: {
+        organizationId: true,
+        role: true,
+        organization: { select: { id: true, name: true } }
+      }
+    });
+
+    if (!membership) throw AuthErrors.FORBIDDEN();
+
+    const tokens = await issueTokenPair(
+      db,
+      existingFirebaseUser.id,
+      membership.organizationId,
+      membership.role,
+      true
+    );
+
+    return {
+      user: {
+        id: existingFirebaseUser.id,
+        email: existingFirebaseUser.email,
+        name: existingFirebaseUser.name,
+        emailVerified: true
+      },
+      organization: membership.organization,
+      ...tokens
+    };
+  }
+
+  // Never silently link an existing password-based account by email.
+  const existingEmailUser = await db.user.findUnique({
+    where: { email }
+  });
+
+  if (existingEmailUser) {
+    throw AuthErrors.EMAIL_IN_USE();
+  }
+
+  const name =
+    body.name?.trim() ||
+    decoded.name?.trim() ||
+    email.split("@")[0];
+
+  const organizationName =
+    body.organizationName?.trim() ||
+    `${name}'s Workspace`;
+
+  const passwordHash = await bcrypt.hash(
+    crypto.randomBytes(32).toString("hex"),
+    Math.max(env.bcryptRounds, 12)
+  );
+
+  const created = await db.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        name,
+        passwordHash,
+        firebaseUid: decoded.uid,
+        emailVerified: true,
+        emailVerifiedAt: new Date()
+      }
+    });
+
+    const organization = await tx.organization.create({
+      data: { name: organizationName },
+      select: { id: true, name: true }
+    });
+
+    await tx.orgMember.create({
+      data: {
+        userId: user.id,
+        organizationId: organization.id,
+        role: "ORG_ADMIN"
+      }
+    });
+
+    return { user, organization };
+  });
+
+  const tokens = await issueTokenPair(
+    db,
+    created.user.id,
+    created.organization.id,
+    "ORG_ADMIN",
+    true
+  );
+
+  return {
+    user: {
+      id: created.user.id,
+      email: created.user.email,
+      name: created.user.name,
+      emailVerified: true
+    },
+    organization: created.organization,
+    ...tokens
   };
 }

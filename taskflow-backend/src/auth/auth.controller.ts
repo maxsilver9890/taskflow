@@ -14,7 +14,8 @@ import {
   resendRegistrationSchema,
   selectOrganizationSchema,
   verifyEmailSchema,
-  resendVerificationSchema
+  resendVerificationSchema,
+  firebaseExchangeSchema
 } from "./auth.schemas.js";
 import * as AuthService from "./auth.service.js";
 
@@ -176,4 +177,21 @@ export async function resendRegistrationHandler(req: Request, res: Response, nex
     const result = await AuthService.resendRegistration(prisma, _emailQueue, body);
     res.status(200).json(result);
   } catch (error) { next(error); }
+}
+
+export async function firebaseExchangeHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { body } = firebaseExchangeSchema.parse({
+      body: req.body
+    });
+
+    const result = await AuthService.firebaseExchange(prisma, body);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 }

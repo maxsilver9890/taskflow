@@ -38,6 +38,7 @@ enum OrgMemberRole {
 model User {
   id              String           @id @default(uuid()) @db.Uuid
   email           String           @unique
+  firebaseUid String? @unique
   name            String
   passwordHash    String
   /// Whether this user has completed OTP email verification. New registrations
