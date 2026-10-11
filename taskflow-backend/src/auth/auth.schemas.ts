@@ -114,3 +114,17 @@ export type ForgotPasswordBody = z.infer<typeof forgotPasswordSchema>["body"];
 export type ResetPasswordBody = z.infer<typeof resetPasswordSchema>["body"];
 export type VerifyEmailBody = z.infer<typeof verifyEmailSchema>["body"];
 export type ResendVerificationBody = z.infer<typeof resendVerificationSchema>["body"];
+
+export const verifyRegistrationSchema = z.object({
+  body: z.object({
+    email: z.string().email("Must be a valid email address").toLowerCase().trim(),
+    otp: z.string().trim().regex(/^\d{6}$/, "otp must be a 6-digit code")
+  })
+});
+
+export const resendRegistrationSchema = z.object({
+  body: z.object({ email: z.string().email("Must be a valid email address").toLowerCase().trim() })
+});
+
+export type VerifyRegistrationBody = z.infer<typeof verifyRegistrationSchema>["body"];
+export type ResendRegistrationBody = z.infer<typeof resendRegistrationSchema>["body"];

@@ -1,7 +1,7 @@
 /**
  * Unit tests for the email-verification OTP flow (auth.service.ts:
- * verifyEmail / resendVerification), plus the OTP-issuing half of
- * register().
+ * verifyEmail / resendVerification), plus register() enqueue failure
+ * handling for pending registrations.
  *
  * These tests do NOT require a live database — all Prisma calls are
  * replaced with vi.fn() stubs, mirroring auth.service.test.ts.
@@ -42,6 +42,13 @@ function makePrismaMock() {
       findFirst: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn()
+    },
+    pendingRegistration: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn()
     },
     $transaction: vi.fn()
   } as unknown as import("@prisma/client").PrismaClient;
@@ -356,25 +363,12 @@ describe("auth.service — resendVerification", () => {
 // ─── register()'s email-queue failure handling ─────────────────────────────────
 
 describe("auth.service — register (email queue failure)", () => {
-  it("still completes registration (201-equivalent: account created, tokens issued) when the email queue is down — best-effort enqueue, not transactional with the DB write", async () => {
+  it("still creates a pending registration when the email queue is down — best-effort enqueue, not transactional with the DB write", async () => {
     const db = makePrismaMock();
-    const orgId = ORG_ID;
-    const userId = USER_ID;
 
     (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tx = {
-        organization: { create: vi.fn().mockResolvedValue({ id: orgId, name: "Acme" }) },
-        user: {
-          create: vi.fn().mockResolvedValue({ id: userId, email: "carol@example.com", name: "Carol", createdAt: new Date() })
-        },
-        orgMember: { create: vi.fn().mockResolvedValue({}) }
-      };
-      return fn(tx);
-    });
-    (db.emailVerificationOtp.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
-    (db.emailVerificationOtp.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-    (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (db.pendingRegistration.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
     const failingQueue = {
       add: vi.fn().mockRejectedValue(new Error("Redis connection lost"))
@@ -389,12 +383,12 @@ describe("auth.service — register (email queue failure)", () => {
       organizationName: "Acme"
     });
 
-    // The account and its OTP row exist, and registration still returns a
-    // normal (unverified) token pair — the user can request a fresh code
-    // via resend-verification once the queue recovers.
-    expect(result.user.emailVerified).toBe(false);
-    expect(result).toHaveProperty("accessToken");
-    expect(db.emailVerificationOtp.create).toHaveBeenCalledTimes(1);
+    // The pending row exists so the caller can request a fresh code via
+    // POST /auth/resend-registration once the queue recovers.
+    expect(result).toMatchObject({ email: "carol@example.com", expiresInMinutes: 10 });
+    expect("accessToken" in result).toBe(false);
+    expect(db.pendingRegistration.upsert).toHaveBeenCalledTimes(1);
+    expect(db.user.create).not.toHaveBeenCalled();
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("enqueue_failed"));
 
     consoleErrorSpy.mockRestore();

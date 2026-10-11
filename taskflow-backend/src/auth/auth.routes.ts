@@ -11,7 +11,9 @@ import {
   registerHandler,
   resetPasswordHandler,
   verifyEmailHandler,
-  resendVerificationHandler
+  resendVerificationHandler,
+  verifyRegistrationHandler,
+  resendRegistrationHandler
 } from "./auth.controller.js";
 
 export function createAuthRouter(): Router {
@@ -22,11 +24,13 @@ export function createAuthRouter(): Router {
 
   /**
    * @route   POST /auth/register
-   * @desc    Create a new user account and organisation; the registrant
-   *          becomes ORG_ADMIN of the newly created organisation.
+   * @desc    Create a pending registration and send an OTP; the real user and
+   *          organisation are created only after successful verification.
    * @access  Public
    */
   router.post("/register", registerHandler);
+  router.post("/verify-registration", verifyRegistrationHandler);
+  router.post("/resend-registration", resendRegistrationHandler);
 
   /**
    * @route   POST /auth/login

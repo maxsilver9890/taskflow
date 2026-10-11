@@ -9,10 +9,12 @@ import {
   logoutSchema,
   refreshSchema,
   registerSchema,
-  resetPasswordSchema
-  ,selectOrganizationSchema
-  ,verifyEmailSchema
-  ,resendVerificationSchema
+  resetPasswordSchema,
+  verifyRegistrationSchema,
+  resendRegistrationSchema,
+  selectOrganizationSchema,
+  verifyEmailSchema,
+  resendVerificationSchema
 } from "./auth.schemas.js";
 import * as AuthService from "./auth.service.js";
 
@@ -157,4 +159,21 @@ export async function resendVerificationHandler(
   } catch (error) {
     next(error);
   }
+}
+
+
+export async function verifyRegistrationHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { body } = verifyRegistrationSchema.parse({ body: req.body });
+    const result = await AuthService.verifyRegistration(prisma, body);
+    res.status(200).json(result);
+  } catch (error) { next(error); }
+}
+
+export async function resendRegistrationHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { body } = resendRegistrationSchema.parse({ body: req.body });
+    const result = await AuthService.resendRegistration(prisma, _emailQueue, body);
+    res.status(200).json(result);
+  } catch (error) { next(error); }
 }

@@ -270,3 +270,28 @@ export async function consumeEmailVerificationOtp(db: PrismaClient, id: string) 
     data: { consumedAt: new Date() }
   });
 }
+
+
+// ─── Pending registration queries ─────────────────────────────────────────────
+
+export async function findPendingRegistrationByEmail(db: PrismaClient, email: string) {
+  return db.pendingRegistration.findUnique({ where: { email } });
+}
+
+export async function upsertPendingRegistration(
+  db: PrismaClient,
+  data: { email: string; name: string; passwordHash: string; organizationName: string; otpHash: string; otpExpiresAt: Date; otpCreatedAt: Date }
+) {
+  return db.pendingRegistration.upsert({
+    where: { email: data.email },
+    create: data,
+    update: {
+      name: data.name, passwordHash: data.passwordHash, organizationName: data.organizationName,
+      otpHash: data.otpHash, otpExpiresAt: data.otpExpiresAt, otpCreatedAt: data.otpCreatedAt, attempts: 0
+    }
+  });
+}
+
+export async function incrementPendingRegistrationAttempts(db: PrismaClient, id: string) {
+  return db.pendingRegistration.update({ where: { id }, data: { attempts: { increment: 1 } } });
+}

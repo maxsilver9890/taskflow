@@ -74,7 +74,7 @@ export interface OrganizationInvitationPayload {
 }
 
 export interface EmailVerificationPayload {
-  userId: string;
+  userId?: string;
   email: string;
   name: string;
   /**

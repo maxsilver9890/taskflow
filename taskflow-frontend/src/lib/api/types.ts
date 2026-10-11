@@ -63,9 +63,26 @@ export interface SelectOrganizationResponse extends TokenPair {
   organization: ActiveOrganization;
 }
 
-/** POST /auth/register */
-export interface RegisterResponse extends TokenPair {
-  user: AuthUser & { createdAt: string };
+/** POST /auth/register — creates a pending registration only. */
+export interface RegisterResponse {
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+  /** Present only for recovery of an account created by the old flow. */
+  legacyRecovery?: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenType?: "Bearer";
+  expiresIn?: number;
+  user?: AuthUser;
+  organization?: { id: string; name: string };
+}
+
+export interface VerifyRegistrationInput { email: string; otp: string }
+export interface ResendRegistrationInput { email: string }
+export interface VerifyRegistrationResponse extends TokenPair {
+  message: string;
+  user: AuthUser & { createdAt: string; emailVerified: true };
   organization: { id: string; name: string };
 }
 

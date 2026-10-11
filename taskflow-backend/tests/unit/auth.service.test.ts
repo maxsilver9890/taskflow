@@ -58,6 +58,13 @@ function makePrismaMock() {
       update: vi.fn(),
       updateMany: vi.fn()
     },
+    pendingRegistration: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn()
+    },
     $transaction: vi.fn()
   } as unknown as import("@prisma/client").PrismaClient;
 }
@@ -71,145 +78,57 @@ function makeQueueStub() {
 
 describe("auth.service — register", () => {
   let db: ReturnType<typeof makePrismaMock>;
+  beforeEach(() => { db = makePrismaMock(); });
 
-  const orgId = "00000000-0000-0000-0000-000000000001";
-  const userId = "00000000-0000-0000-0000-000000000002";
-
-  beforeEach(() => {
-    db = makePrismaMock();
-  });
-
-  it("throws EMAIL_IN_USE when a user with that email already exists", async () => {
+  it("rejects an email already owned by an existing account", async () => {
     (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "user-1",
-      email: "a@example.com"
+      id: "user-1", email: "a@example.com", name: "Alice", passwordHash: "hash", emailVerified: true
     });
-
-    await expect(
-      register(db, undefined, {
-        email: "a@example.com",
-        name: "Alice",
-        password: "password123",
-        organizationName: "Acme"
-      })
-    ).rejects.toMatchObject({ code: "EMAIL_IN_USE" });
+    await expect(register(db, undefined, {
+      email: "a@example.com", name: "Alice", password: "password123", organizationName: "Acme"
+    })).rejects.toMatchObject({ code: "EMAIL_IN_USE" });
   });
 
-  it("creates org + user + ORG_ADMIN membership atomically and hashes the password", async () => {
+  it("stores a pending registration and queues an OTP without creating a user, organization, membership, or tokens", async () => {
     (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-    let capturedHash = "";
-    let capturedRole = "";
-
-    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tx = {
-        organization: {
-          create: vi.fn().mockResolvedValue({ id: orgId, name: "Acme" })
-        },
-        user: {
-          create: vi.fn().mockImplementation(({ data }: { data: { email: string; name: string; passwordHash: string } }) => {
-            capturedHash = data.passwordHash;
-            return Promise.resolve({ id: userId, email: data.email, name: data.name, createdAt: new Date() });
-          })
-        },
-        orgMember: {
-          create: vi.fn().mockImplementation(({ data }: { data: { role: string } }) => {
-            capturedRole = data.role;
-            return Promise.resolve({});
-          })
-        }
-      };
-      return fn(tx);
-    });
-
-    (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-    (db.emailVerificationOtp.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
-    (db.emailVerificationOtp.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-
+    (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    let saved: any;
+    (db.pendingRegistration.upsert as ReturnType<typeof vi.fn>).mockImplementation(({ create }: { create: unknown }) => { saved = create; return Promise.resolve(create); });
     const queue = makeQueueStub();
-
     const result = await register(db, queue, {
-      email: "alice@example.com",
-      name: "Alice",
-      password: "plaintextpassword",
-      organizationName: "Acme"
+      email: "alice@example.com", name: "Alice", password: "plaintextpassword", organizationName: "Acme"
     });
 
-    // Password must be hashed
-    expect(capturedHash).not.toBe("plaintextpassword");
-    const matches = await bcrypt.compare("plaintextpassword", capturedHash);
-    expect(matches).toBe(true);
-
-    // Role must be ORG_ADMIN — never MEMBER
-    expect(capturedRole).toBe("ORG_ADMIN");
-
-    // Response includes org info
-    expect(result.organization).toMatchObject({ id: orgId, name: "Acme" });
-    expect(result.tokenType).toBe("Bearer");
-
-    // New accounts start unverified — both in the response body and in the
-    // embedded JWT claim that requireVerifiedEmail actually checks.
-    expect(result.user.emailVerified).toBe(false);
-    expect(verifyAccessToken(result.accessToken)).toMatchObject({ emailVerified: false });
-
-    // An OTP row was created (after invalidating any — here none — prior ones).
-    expect(db.emailVerificationOtp.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ userId }) })
-    );
-    expect(db.emailVerificationOtp.create).toHaveBeenCalledTimes(1);
-    const otpCreateArg = (db.emailVerificationOtp.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(otpCreateArg.data.userId).toBe(userId);
-    expect(typeof otpCreateArg.data.otpHash).toBe("string");
-    expect(otpCreateArg.data.otpHash).toHaveLength(64); // sha256 hex — never the raw code
-
-    // The verification email was queued through the SAME email queue BullMQ
-    // infra as every other email type — not a second queue — and the raw
-    // 6-digit code only ever appears here, never in the API response above.
-    expect(queue.add).toHaveBeenCalledWith(
-      "email_verification",
-      expect.objectContaining({
-        type: "email_verification",
-        data: expect.objectContaining({ userId, email: "alice@example.com" })
-      })
-    );
+    expect(result).toMatchObject({ email: "alice@example.com", expiresInMinutes: 10 });
+    expect("accessToken" in result).toBe(false);
+    expect(saved.passwordHash).not.toBe("plaintextpassword");
+    expect(await bcrypt.compare("plaintextpassword", saved.passwordHash)).toBe(true);
+    expect(saved.otpHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(db.user.create).not.toHaveBeenCalled();
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.refreshToken.create).not.toHaveBeenCalled();
+    expect(db.emailVerificationOtp.create).not.toHaveBeenCalled();
+    expect(queue.add).toHaveBeenCalledWith("email_verification", expect.objectContaining({
+      type: "email_verification", data: expect.objectContaining({ email: "alice@example.com", name: "Alice" })
+    }));
     const enqueuedOtp = (queue.add as ReturnType<typeof vi.fn>).mock.calls[0][1].data.otp;
     expect(enqueuedOtp).toMatch(/^\d{6}$/);
   });
 
-  it("still creates the account and OTP when no email queue is wired up (never sends synchronously)", async () => {
+  it("creates a pending registration even if the email queue is unavailable", async () => {
     (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tx = {
-        organization: { create: vi.fn().mockResolvedValue({ id: orgId, name: "Acme" }) },
-        user: {
-          create: vi.fn().mockResolvedValue({ id: userId, email: "bob@example.com", name: "Bob", createdAt: new Date() })
-        },
-        orgMember: { create: vi.fn().mockResolvedValue({}) }
-      };
-      return fn(tx);
-    });
-    (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-    (db.emailVerificationOtp.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
-    (db.emailVerificationOtp.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
-
-    // No queue passed — simulates a misconfigured environment. Registration
-    // must still succeed (the OTP row is still created) rather than
-    // crashing or silently falling back to a synchronous send.
+    (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (db.pendingRegistration.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({});
     const result = await register(db, undefined, {
-      email: "bob@example.com",
-      name: "Bob",
-      password: "plaintextpassword",
-      organizationName: "Acme"
+      email: "bob@example.com", name: "Bob", password: "plaintextpassword", organizationName: "Acme"
     });
-
-    expect(result.user.emailVerified).toBe(false);
-    expect(db.emailVerificationOtp.create).toHaveBeenCalledTimes(1);
+    expect(result.email).toBe("bob@example.com");
+    expect(db.pendingRegistration.upsert).toHaveBeenCalledTimes(1);
+    expect(db.user.create).not.toHaveBeenCalled();
   });
 
   it("does not expose organizationId or role in the request shape", () => {
     // Compile-time guard: RegisterBody must not contain these fields.
-    // If this type assertion compiles, the schema is correct.
     type HasNoOrgId = "organizationId" extends keyof import("../../src/auth/auth.schemas.js").RegisterBody ? true : false;
     type HasNoRole  = "role"           extends keyof import("../../src/auth/auth.schemas.js").RegisterBody ? true : false;
     const _orgId: HasNoOrgId = false;

@@ -56,14 +56,16 @@ export default function RegisterPage() {
     if (Object.keys(validationErrors).length > 0) return;
     setLoading(true);
     try {
-      await register({
+      const email = form.email.trim().toLowerCase();
+      const legacyRecovery = await register({
         name: form.name.trim(),
-        email: form.email.trim(),
+        email,
         organizationName: form.organizationName.trim(),
         password: form.password,
       });
-      // Every new account starts unverified — AuthLayout would bounce them
-      // here anyway, but navigating directly skips that extra redirect hop.
+      // New registrations have no session until verification. Legacy unverified accounts use the existing authenticated recovery flow.
+      if (!legacyRecovery) sessionStorage.setItem("taskflow.pendingRegistrationEmail", email);
+      else sessionStorage.removeItem("taskflow.pendingRegistrationEmail");
       router.replace("/verify-email");
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fieldErrors).length > 0) {

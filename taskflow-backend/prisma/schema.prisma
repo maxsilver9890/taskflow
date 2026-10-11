@@ -180,6 +180,26 @@ model TaskAssignment {
   @@map("task_assignments")
 }
 
+
+/// Registration data is held here until the email owner proves control of the address.
+/// Password and OTP are stored only as hashes; no User or Organization exists yet.
+model PendingRegistration {
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique
+  name             String
+  passwordHash     String
+  organizationName String
+  otpHash           String
+  otpExpiresAt      DateTime
+  otpCreatedAt      DateTime @default(now())
+  attempts          Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([otpExpiresAt])
+  @@map("pending_registrations")
+}
+
 /// One-time tokens for the forgot-password / reset-password flow. A raw
 /// token is emailed to the user; only its SHA-256 hash is ever stored,
 /// mirroring RefreshToken's approach so a DB leak doesn't leak usable tokens.

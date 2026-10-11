@@ -34,7 +34,7 @@ interface AuthContextValue {
    */
   emailVerified: boolean;
   login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  register: (input: RegisterInput) => Promise<boolean>;
   logout: () => Promise<void>;
   switchOrganization: (organizationId: string) => Promise<void>;
   /** Redeem a 6-digit OTP. On success, writes the fresh (now-verified) token pair. */
@@ -70,19 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const register = useCallback(
-    async (input: RegisterInput) => {
-      const res = await authApi.register(input);
+  const register = useCallback(async (input: RegisterInput) => {
+    const res = await authApi.register(input);
+    if (res.legacyRecovery && res.accessToken && res.refreshToken && res.user && res.organization) {
       queryClient.clear();
       writeSession({
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
-        user: { id: res.user.id, email: res.user.email, name: res.user.name, emailVerified: res.user.emailVerified },
+        user: res.user,
         organizationName: res.organization.name,
       });
-    },
-    [queryClient],
-  );
+      return true;
+    }
+    return false;
+  }, [queryClient]);
 
   const logout = useCallback(async () => {
     const current = parseSession(readSessionRaw());

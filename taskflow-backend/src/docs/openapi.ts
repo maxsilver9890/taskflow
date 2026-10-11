@@ -548,7 +548,7 @@ export const openapiDocument = {
     "/auth/register": {
       post: {
         tags: ["Auth"],
-        summary: "Register a new organization and user",
+        summary: "Start a pending registration and send an email OTP",
         requestBody: {
           required: true,
           content: {
@@ -561,7 +561,7 @@ export const openapiDocument = {
         },
         responses: {
           "201": {
-            description: "Registered successfully"
+            description: "Pending registration created; no user or organization exists until OTP verification"
           },
           "409": {
             description: "Email already exists",
@@ -577,6 +577,23 @@ export const openapiDocument = {
             description: "Validation error"
           }
         }
+      }
+    },
+
+    "/auth/verify-registration": {
+      post: {
+        tags: ["Auth"],
+        summary: "Verify a pending registration using its email OTP",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["email", "otp"], properties: { email: { type: "string", format: "email" }, otp: { type: "string", pattern: "^[0-9]{6}$" } } } } } },
+        responses: { "200": { description: "Email verified; account, organization, and session created" }, "401": { description: "Invalid or expired OTP" }, "429": { description: "OTP attempts exceeded" } }
+      }
+    },
+    "/auth/resend-registration": {
+      post: {
+        tags: ["Auth"],
+        summary: "Resend OTP for a pending registration",
+        requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["email"], properties: { email: { type: "string", format: "email" } } } } } },
+        responses: { "200": { description: "Generic response to avoid email enumeration" }, "429": { description: "Resend cooldown active" } }
       }
     },
 

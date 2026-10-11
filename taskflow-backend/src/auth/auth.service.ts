@@ -20,14 +20,15 @@ import type {
   LogoutBody,
   RefreshBody,
   RegisterBody,
-  ResetPasswordBody
-  ,SelectOrganizationBody
-  ,VerifyEmailBody
+  ResetPasswordBody,
+  SelectOrganizationBody,
+  VerifyEmailBody,
+  VerifyRegistrationBody,
+  ResendRegistrationBody
 } from "./auth.schemas.js";
 import {
   createPasswordResetToken,
   createRefreshToken,
-  createUserWithOrg,
   findPasswordResetTokenByHash,
   findRefreshTokenByHash,
   findUserByEmail,
@@ -45,7 +46,10 @@ import {
   invalidateActiveEmailVerificationOtps,
   incrementEmailVerificationOtpAttempts,
   consumeEmailVerificationOtp,
-  markUserEmailVerified
+  markUserEmailVerified,
+  findPendingRegistrationByEmail,
+  upsertPendingRegistration,
+  incrementPendingRegistrationAttempts
 } from "./auth.data.js";
 
 /** Password reset links are valid for 1 hour. */
@@ -173,20 +177,18 @@ async function issueNewOtp(db: PrismaClient, userId: string): Promise<string> {
 // ─── Service operations ────────────────────────────────────────────────────────
 
 /**
- * Register a new user account.
+ * Start a pending registration.
  *
- * Each registration creates a brand-new organisation and makes the registrant
- * its ORG_ADMIN. The client never supplies an organizationId or role — both are
- * determined entirely server-side to prevent privilege escalation.
+ * New sign-ups store hashed credentials and an OTP on a pending-registration
+ * row only. The real user, organisation, and ORG_ADMIN membership are created
+ * later by verifyRegistration after a valid OTP. The client never supplies an
+ * organizationId or role — both are determined entirely server-side.
  *
- * Transaction order: organisation → user → org_member (ORG_ADMIN role)
- * All three writes are atomic; a failure at any step rolls everything back.
+ * Existing unverified accounts (created before this pending-row flow) can
+ * recover by submitting the same email and password; that path issues a
+ * session plus an authenticated OTP without creating a duplicate account.
  *
- * The registrant is issued a token pair immediately (existing behaviour is
- * unchanged — they are logged in right away) but `emailVerified` is false on
- * both the user record and the embedded JWT claim, so `requireVerifiedEmail`
- * blocks every other resource route until they redeem their OTP. The
- * emailQueue param is optional purely so this function stays unit-testable
+ * The emailQueue param is optional purely so this function stays unit-testable
  * without a real queue; app.ts always wires a real one in (see
  * forgotPassword for the same pattern).
  */
@@ -195,49 +197,121 @@ export async function register(
   emailQueue: Queue<EmailJobPayload> | undefined,
   body: RegisterBody
 ) {
-  // 1. Reject duplicate emails before doing any hashing work.
-  const existing = await findUserByEmail(db, body.email);
-
-  if (existing) {
-    throw AuthErrors.EMAIL_IN_USE();
+  const existingUser = await findUserByEmail(db, body.email);
+  if (existingUser) {
+    // Recovery for accounts created by the previous, pre-OTP registration flow.
+    // Never create another user/org; only the account's existing password can request a fresh OTP.
+    if (existingUser.emailVerified !== false) throw AuthErrors.EMAIL_IN_USE();
+    const passwordMatches = await bcrypt.compare(body.password, existingUser.passwordHash);
+    if (!passwordMatches) throw AuthErrors.INVALID_CREDENTIALS();
+    const membership = await db.orgMember.findFirst({
+      where: { userId: existingUser.id }, orderBy: { createdAt: "asc" },
+      select: { organizationId: true, role: true, organization: { select: { id: true, name: true } } }
+    });
+    if (!membership) throw AuthErrors.FORBIDDEN();
+    const latest = await findLatestEmailVerificationOtp(db, existingUser.id);
+    if (latest) {
+      const elapsed = Date.now() - latest.createdAt.getTime();
+      if (elapsed < OTP_RESEND_COOLDOWN_MS) throw AuthErrors.OTP_RESEND_COOLDOWN(Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000));
+    }
+    const otp = await issueNewOtp(db, existingUser.id);
+    await enqueueVerificationEmail(emailQueue, existingUser, otp);
+    const tokens = await issueTokenPair(db, existingUser.id, membership.organizationId, membership.role, false);
+    return {
+      legacyRecovery: true as const,
+      message: "This account already exists but is unverified. A verification code has been requested.",
+      email: existingUser.email, expiresInMinutes: OTP_TTL_MINUTES,
+      user: { id: existingUser.id, email: existingUser.email, name: existingUser.name, emailVerified: false },
+      organization: membership.organization, ...tokens
+    };
   }
 
-  // 2. Hash the password with bcrypt (cost factor floored at 12 per spec).
+  const existingPending = await findPendingRegistrationByEmail(db, body.email);
+  if (existingPending) {
+    const elapsed = Date.now() - existingPending.otpCreatedAt.getTime();
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+      throw AuthErrors.OTP_RESEND_COOLDOWN(Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000));
+    }
+  }
+
   const rounds = Math.max(env.bcryptRounds, 12);
   const passwordHash = await bcrypt.hash(body.password, rounds);
-
-  // 3. Atomically create: org → user → org_member(ORG_ADMIN).
-  const { user, org } = await createUserWithOrg(db, {
-    email: body.email,
-    name: body.name,
-    passwordHash,
-    organizationName: body.organizationName
+  const otp = generateOtp();
+  const now = new Date();
+  await upsertPendingRegistration(db, {
+    email: body.email, name: body.name, passwordHash, organizationName: body.organizationName,
+    otpHash: hashToken(otp), otpExpiresAt: new Date(now.getTime() + OTP_TTL_MS), otpCreatedAt: now
   });
 
-  // 4. Generate the first OTP and queue the verification email through the
-  // existing BullMQ infrastructure (never sent synchronously from the API).
-  // Best-effort: a transient queue outage must not fail registration itself
-  // (see enqueueVerificationEmail) — the account and OTP row already exist,
-  // and the user can always request a fresh code via resend-verification.
-  const otp = await issueNewOtp(db, user.id);
-  await enqueueVerificationEmail(emailQueue, user, otp);
+  try {
+    await emailQueue?.add("email_verification", {
+      type: "email_verification",
+      data: { email: body.email, name: body.name, otp, expiresInMinutes: OTP_TTL_MINUTES }
+    });
+  } catch (error) {
+    // The pending record is recoverable through the resend endpoint. Do not log OTP or email.
+    console.error(JSON.stringify({ level: "warn", service: "taskflow-api", event: "enqueue_failed", jobType: "email_verification", err: String(error) }));
+  }
 
-  // 5. Issue tokens — registrant is immediately logged in as org admin, but
-  // unverified; requireVerifiedEmail blocks app routes until step 4's OTP is
-  // redeemed via POST /auth/verify-email.
-  const tokens = await issueTokenPair(db, user.id, org.id, "ORG_ADMIN", false);
+  return { message: "If this address can be registered, a verification code has been sent.", email: body.email, expiresInMinutes: OTP_TTL_MINUTES };
+}
 
-  return {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      createdAt: user.createdAt,
-      emailVerified: false
-    },
-    organization: { id: org.id, name: org.name },
-    ...tokens
-  };
+/** Verify a pending registration, then atomically create the real account and organization. */
+export async function verifyRegistration(
+  db: PrismaClient,
+  body: VerifyRegistrationBody
+) {
+  const pending = await findPendingRegistrationByEmail(db, body.email);
+  if (!pending) throw AuthErrors.OTP_INVALID();
+  if (pending.attempts >= OTP_MAX_ATTEMPTS) throw AuthErrors.OTP_LOCKED();
+  if (pending.otpExpiresAt < new Date()) throw AuthErrors.OTP_EXPIRED();
+  if (!hashesMatch(hashToken(body.otp), pending.otpHash)) {
+    await incrementPendingRegistrationAttempts(db, pending.id);
+    throw AuthErrors.OTP_INVALID();
+  }
+
+  const created = await db.$transaction(async (tx) => {
+    const claimed = await tx.pendingRegistration.updateMany({
+      where: { id: pending.id, otpHash: pending.otpHash, attempts: { lt: OTP_MAX_ATTEMPTS }, otpExpiresAt: { gt: new Date() } },
+      data: { attempts: OTP_MAX_ATTEMPTS }
+    });
+    if (claimed.count !== 1) throw AuthErrors.OTP_INVALID();
+    const org = await tx.organization.create({ data: { name: pending.organizationName }, select: { id: true, name: true } });
+    const user = await tx.user.create({
+      data: { email: pending.email, name: pending.name, passwordHash: pending.passwordHash, emailVerified: true, emailVerifiedAt: new Date() },
+      select: { id: true, email: true, name: true, createdAt: true, emailVerified: true }
+    });
+    await tx.orgMember.create({ data: { userId: user.id, organizationId: org.id, role: "ORG_ADMIN" } });
+    await tx.pendingRegistration.delete({ where: { id: pending.id } });
+    return { user, org };
+  });
+
+  const tokens = await issueTokenPair(db, created.user.id, created.org.id, "ORG_ADMIN", true);
+  return { user: created.user, organization: created.org, ...tokens, message: "Email verified successfully." };
+}
+
+/** Resend is deliberately generic for unknown emails to avoid account enumeration. */
+export async function resendRegistration(
+  db: PrismaClient,
+  emailQueue: Queue<EmailJobPayload> | undefined,
+  body: ResendRegistrationBody
+): Promise<{ message: string; cooldownSeconds: number }> {
+  const pending = await findPendingRegistrationByEmail(db, body.email);
+  if (!pending) return { message: "If a pending registration exists, a new code has been sent.", cooldownSeconds: OTP_RESEND_COOLDOWN_MS / 1000 };
+  const elapsed = Date.now() - pending.otpCreatedAt.getTime();
+  if (elapsed < OTP_RESEND_COOLDOWN_MS) throw AuthErrors.OTP_RESEND_COOLDOWN(Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000));
+  const otp = generateOtp();
+  const now = new Date();
+  await db.pendingRegistration.update({
+    where: { id: pending.id },
+    data: { otpHash: hashToken(otp), otpExpiresAt: new Date(now.getTime() + OTP_TTL_MS), otpCreatedAt: now, attempts: 0 }
+  });
+  try {
+    await emailQueue?.add("email_verification", { type: "email_verification", data: { email: pending.email, name: pending.name, otp, expiresInMinutes: OTP_TTL_MINUTES } });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "warn", service: "taskflow-api", event: "enqueue_failed", jobType: "email_verification", err: String(error) }));
+  }
+  return { message: "If a pending registration exists, a new code has been sent.", cooldownSeconds: OTP_RESEND_COOLDOWN_MS / 1000 };
 }
 
 /**

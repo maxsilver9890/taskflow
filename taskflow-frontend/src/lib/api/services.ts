@@ -40,6 +40,8 @@ import type {
   NotificationsResponse,
   VerifyEmailInput,
   VerifyEmailResponse,
+  VerifyRegistrationInput,
+  VerifyRegistrationResponse,
 } from "./types";
 
 // ── Auth (public endpoints) ──────────────────────────────────────────────────
@@ -49,6 +51,10 @@ export const authApi = {
     api<LoginResponse>("/auth/login", { method: "POST", body: input, anonymous: true }),
   register: (input: RegisterInput) =>
     api<RegisterResponse>("/auth/register", { method: "POST", body: input, anonymous: true }),
+  verifyRegistration: (input: VerifyRegistrationInput) =>
+    api<VerifyRegistrationResponse>("/auth/verify-registration", { method: "POST", body: input, anonymous: true }),
+  resendRegistration: (email: string) =>
+    api<{ message: string; cooldownSeconds: number }>("/auth/resend-registration", { method: "POST", body: { email }, anonymous: true }),
   logout: (refreshToken: string) =>
     api<{ message: string }>("/auth/logout", { method: "POST", body: { refreshToken }, anonymous: true }),
   forgotPassword: (input: ForgotPasswordInput) =>
