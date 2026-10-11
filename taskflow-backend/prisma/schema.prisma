@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Workflow status used by tasks across the application.
+enum TaskStatus {
+  TODO       @map("todo")
+  IN_PROGRESS @map("in_progress")
+  REVIEW     @map("review")
+  DONE       @map("done")
+
+  @@map("status")
+}
+
+/// Priority level used to sort and escalate work.
+enum TaskPriority {
+  LOW    @map("low")
+  MEDIUM @map("medium")
+  HIGH   @map("high")
+  URGENT @map("urgent")
+
+  @@map("priority")
+}
+
+/// Organization membership role used for later multi-tenant permissions.
+enum OrgMemberRole {
+  ORG_ADMIN @map("org_admin")
+  MEMBER    @map("member")
+
+  @@map("org_member_role")
+}
+
+model User {
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique
+  name            String
+  passwordHash    String
+  /// Whether this user has completed OTP email verification. New registrations
+  /// start false; users backfilled by the migration that introduced this column
+  /// were marked true so existing accounts are never locked out retroactively.
+  emailVerified   Boolean          @default(false)
+  /// Set the moment verification succeeds; null while unverified.
+  emailVerifiedAt DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  orgMemberships  OrgMember[]
+  taskAssignments TaskAssignment[]
+  authoredComments Comment[]       @relation("CommentAuthor")
+  refreshTokens   RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  sentOrganizationInvitations OrganizationInvitation[] @relation("InvitationSender")
+  notifications    Notification[]
+  emailVerificationOtps EmailVerificationOtp[]
+
+  @@map("users")
+}
+
+/// Persisted refresh tokens — hashed before storage, revocable individually or in bulk.
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  /// SHA-256 hash of the raw token sent to the client. Never store plaintext.
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  /// Supports listing / revoking all tokens for a user (logout-all-devices).
+  @@index([userId])
+  /// Supports a background cleanup job that prunes expired tokens.
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Organization {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  members     OrgMember[]
+  projects    Project[]
+  invitations OrganizationInvitation[]
+
+  @@map("organizations")
+}
+
+model OrganizationInvitation {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  inviterId      String        @db.Uuid
+  email          String
+  role           OrgMemberRole
+  tokenHash      String        @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  inviter        User          @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([organizationId, email])
+  @@index([expiresAt])
+  @@map("organization_invitations")
+}
+
+model OrgMember {
+  organizationId String        @db.Uuid
+  userId         String        @db.Uuid
+  role           OrgMemberRole
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([organizationId, userId])
+  /// Supports listing members for a tenant-scoped organization.
+  @@index([organizationId])
+  /// Supports locating every organization a user belongs to.
+  @@index([userId])
+  @@map("org_members")
+}
+
+model Project {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tasks          Task[]
+
+  /// Supports organization-scoped project lookups.
+  @@index([organizationId])
+  @@map("projects")
+}
+
+model Task {
+  id          String           @id @default(uuid()) @db.Uuid
+  projectId   String           @db.Uuid
+  title       String
+  description String?
+  status      TaskStatus
+  priority    TaskPriority
+  dueDate     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignments TaskAssignment[]
+  comments    Comment[]
+
+  /// Supports fetching tasks within a project.
+  @@index([projectId])
+  /// Supports board and backlog filtering by project and status.
+  @@index([projectId, status])
+  /// Supports priority-based triage within project views.
+  @@index([projectId, priority])
+  /// Supports due-date dashboards and overdue task queries.
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  taskId     String   @db.Uuid
+  userId     String   @db.Uuid
+  createdAt  DateTime @default(now())
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([taskId, userId])
+  /// Supports fetching assignees for a task detail view.
+  @@index([taskId])
+  /// Supports locating work assigned to a user.
+  @@index([userId])
+  @@map("task_assignments")
+}
+
+/// One-time tokens for the forgot-password / reset-password flow. A raw
+/// token is emailed to the user; only its SHA-256 hash is ever stored,
+/// mirroring RefreshToken's approach so a DB leak doesn't leak usable tokens.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  /// Set once the token has been redeemed; a used or expired token is rejected.
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  /// Supports invalidating a user's outstanding tokens when a new one is issued.
+  @@index([userId])
+  /// Supports a background cleanup job that prunes expired tokens.
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+/// One-time 6-digit codes for the POST /auth/verify-email flow. Only a
+/// SHA-256 hash of the code is ever stored (mirrors PasswordResetToken /
+/// RefreshToken) — the raw code exists only in memory long enough to be
+/// queued into the verification email. At most one row per user is ever
+/// "active" (consumedAt IS NULL AND invalidatedAt IS NULL); generating a new
+/// code invalidates whatever was active before it, and attempts is tracked
+/// on that active row so a guessing spree against one code is capped
+/// regardless of how many times it's queried.
+model EmailVerificationOtp {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  otpHash       String
+  expiresAt     DateTime
+  /// Incremented on every failed verification attempt against this row.
+  attempts      Int       @default(0)
+  /// Set once this code has been successfully redeemed.
+  consumedAt    DateTime?
+  /// Set when a newer code supersedes this one (new OTP issued, resend, etc).
+  invalidatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  /// Supports finding the active OTP / latest OTP for a user.
+  @@index([userId])
+  /// Supports a background cleanup job that prunes expired codes.
+  @@index([expiresAt])
+  @@map("email_verification_otps")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId     String   @db.Uuid
+  authorId   String   @db.Uuid
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author     User     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  /// Supports loading a task's discussion thread efficiently.
+  @@index([taskId])
+  @@map("comments")
+}
+
+/// In-app notifications. organizationId is deliberately a nullable snapshot:
+/// notifications remain readable after their organization is deleted.
+model Notification {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  organizationId String?  @db.Uuid
+  organizationName String?
+  title          String
+  message        String
+  link           String?
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}

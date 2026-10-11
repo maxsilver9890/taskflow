@@ -1,0 +1,71 @@
+name: Frontend CI
+
+# Scoped to taskflow-frontend only (F4). Backend CI is tracked separately
+# (B4) and intentionally not included here.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "taskflow-frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "taskflow-frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+defaults:
+  run:
+    working-directory: taskflow-frontend
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: taskflow-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # The build only needs a syntactically valid API URL — no backend
+          # is reached at build time (Next.js doesn't prerender data from it).
+          NEXT_PUBLIC_API_URL: https://example.invalid
+
+  e2e:
+    runs-on: ubuntu-latest
+    # E2E (F3) needs a live backend + Postgres + Redis to sign up/log in
+    # against, which isn't wired up in CI yet. Tracked separately; this job
+    # is a placeholder so the workflow file documents the intended shape
+    # rather than silently having no E2E stage at all.
+    if: false
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: taskflow-frontend/package-lock.json
+      - run: npm ci
+        working-directory: taskflow-frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: taskflow-frontend
+      - run: npm run test:e2e
+        working-directory: taskflow-frontend

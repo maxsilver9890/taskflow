@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch/PR to save minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  # Matches docker-compose.yml / .env defaults; safe placeholder values only,
+  # scoped to this ephemeral CI run.
+  DATABASE_URL: postgresql://taskflow:change_me@localhost:5432/taskflow_test
+  POSTGRES_DB: taskflow_test
+  POSTGRES_USER: taskflow
+  POSTGRES_PASSWORD: change_me
+  REDIS_HOST: localhost
+  REDIS_PORT: 6379
+  JWT_SECRET: ci-test-jwt-secret-do-not-use-in-production-0000000000000000
+  JWT_REFRESH_SECRET: ci-test-refresh-secret-do-not-use-in-production-0000000
+  BCRYPT_ROUNDS: "12"
+  EMAIL_PROVIDER: console
+  NODE_ENV: test
+
+jobs:
+  build-and-test:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: taskflow_test
+          POSTGRES_USER: taskflow
+          POSTGRES_PASSWORD: change_me
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskflow -d taskflow_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Run database migrations
+        run: npm run prisma:deploy
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Write .env.test for the test run
+        # .env.test is git-ignored (it's a local dev safety net so `npm test`
+        # can never accidentally point at a dev database) so it doesn't exist
+        # on the runner — write it from this workflow's own env: block, which
+        # is the single source of truth for CI's DB/Redis/JWT values.
+        run: |
+          cat > .env.test <<EOF
+          NODE_ENV=test
+          DATABASE_URL=${{ env.DATABASE_URL }}
+          REDIS_HOST=${{ env.REDIS_HOST }}
+          REDIS_PORT=${{ env.REDIS_PORT }}
+          JWT_SECRET=${{ env.JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ env.JWT_REFRESH_SECRET }}
+          BCRYPT_ROUNDS=${{ env.BCRYPT_ROUNDS }}
+          EMAIL_PROVIDER=${{ env.EMAIL_PROVIDER }}
+          EOF
+
+      - name: Unit + integration tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke-test the built server
+        run: |
+          node dist/src/server.js &
+          SERVER_PID=$!
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "Health check passed"
+              kill $SERVER_PID
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not become healthy in time"
+          kill $SERVER_PID || true
+          exit 1
