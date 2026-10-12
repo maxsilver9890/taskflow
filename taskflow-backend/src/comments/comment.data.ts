@@ -40,6 +40,7 @@ export async function createComment(
 
 export async function findComments(
   db: PrismaClient,
+  organizationId: string,
   taskId: string,
   skip: number,
   take: number
@@ -47,7 +48,18 @@ export async function findComments(
   const [data, total] = await db.$transaction([
     db.comment.findMany({
       where: { taskId },
-      include: { author: { select: authorSelect } },
+      include: {
+        author: {
+          select: {
+            ...authorSelect,
+            orgMemberships: {
+              where: { organizationId },
+              select: { role: true },
+              take: 1,
+            },
+          },
+        },
+      },
       orderBy: { createdAt: "asc" },
       skip,
       take
@@ -74,18 +86,25 @@ export async function updateComment(
   commentId: string,
   content: string
 ) {
-  return db.comment.update({
+  const updated = await db.comment.updateMany({
+    where: { id: commentId, deletedAt: null },
+    data: { content }
+  });
+  if (!updated.count) return null;
+
+  return db.comment.findUnique({
     where: { id: commentId },
-    data: { content },
     include: { author: { select: authorSelect } }
   });
 }
 
-export async function deleteComment(
+export async function softDeleteComment(
   db: PrismaClient,
-  commentId: string
+  commentId: string,
+  deletedByName: string
 ) {
-  return db.comment.delete({
-    where: { id: commentId }
+  return db.comment.updateMany({
+    where: { id: commentId, deletedAt: null },
+    data: { content: "", deletedAt: new Date(), deletedByName }
   });
 }

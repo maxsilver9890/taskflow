@@ -37,10 +37,17 @@ export async function listComments(
   await requireTaskInOrg(db, organizationId, taskId);
 
   const skip = (page - 1) * limit;
-  const result = await CommentData.findComments(db, taskId, skip, limit);
+  const result = await CommentData.findComments(db, organizationId, taskId, skip, limit);
 
   return {
-    data: result.data,
+    data: result.data.map(({ author, ...comment }) => {
+      const { orgMemberships, ...authorDetails } = author;
+      return {
+        ...comment,
+        author: authorDetails,
+        authorRole: orgMemberships[0]?.role ?? null,
+      };
+    }),
     total: result.total,
     page,
     limit
@@ -63,6 +70,10 @@ export async function editComment(
     throw new AppError(404, "COMMENT_NOT_FOUND", "Comment not found");
   }
 
+  if (comment.deletedAt) {
+    throw new AppError(404, "COMMENT_NOT_FOUND", "Comment not found");
+  }
+
   if (comment.authorId !== authorId) {
     throw new AppError(
       403,
@@ -71,7 +82,11 @@ export async function editComment(
     );
   }
 
-  return CommentData.updateComment(db, commentId, content);
+  const updated = await CommentData.updateComment(db, commentId, content);
+  if (!updated) {
+    throw new AppError(409, "COMMENT_ALREADY_DELETED", "Comment has already been deleted");
+  }
+  return updated;
 }
 
 export async function removeComment(
@@ -84,22 +99,50 @@ export async function removeComment(
 ) {
   await requireTaskInOrg(db, organizationId, taskId);
 
+  const actorMembership = await db.orgMember.findUnique({
+    where: { organizationId_userId: { organizationId, userId: authorId } },
+    select: { role: true },
+  });
+  if (!actorMembership || actorMembership.role !== role) {
+    throw new AppError(403, "FORBIDDEN", "You are not a member of this organization");
+  }
+
   const comment = await CommentData.findCommentById(db, taskId, commentId);
 
   if (!comment) {
     throw new AppError(404, "COMMENT_NOT_FOUND", "Comment not found");
   }
 
-  // Authors can delete their own comments; org admins can moderate any
-  // comment on a task within their own organization (already enforced by
-  // requireTaskInOrg above).
-  if (comment.authorId !== authorId && role !== "ORG_ADMIN") {
-    throw new AppError(
-      403,
-      "FORBIDDEN",
-      "You can only delete your own comments"
-    );
+  if (comment.deletedAt) {
+    throw new AppError(404, "COMMENT_NOT_FOUND", "Comment not found");
   }
 
-  await CommentData.deleteComment(db, commentId);
+  // Members may delete their own comments. Organization admins may also
+  // moderate comments by members within their organization.
+  if (comment.authorId !== authorId) {
+    if (actorMembership.role !== "ORG_ADMIN") {
+      throw new AppError(403, "FORBIDDEN", "You can only delete your own comments");
+    }
+
+    const authorMembership = await db.orgMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId: comment.authorId } },
+      select: { role: true },
+    });
+    if (authorMembership?.role !== "MEMBER") {
+      throw new AppError(403, "FORBIDDEN", "Admins can only moderate comments by lower-role members");
+    }
+  }
+
+  const deleter = await db.user.findUnique({
+    where: { id: authorId },
+    select: { name: true },
+  });
+  if (!deleter) {
+    throw new AppError(404, "USER_NOT_FOUND", "User not found");
+  }
+
+  const deleted = await CommentData.softDeleteComment(db, commentId, deleter.name);
+  if (!deleted.count) {
+    throw new AppError(409, "COMMENT_ALREADY_DELETED", "Comment has already been deleted");
+  }
 }

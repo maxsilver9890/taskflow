@@ -108,9 +108,10 @@ export function CommentsSection({ taskId }: { taskId: string }) {
       ) : (
         <ul className="space-y-4">
           {comments.map((comment) => {
-            const canModify = comment.authorId === user?.id;
-            const canDelete = canModify || isAdmin;
-            const isEditing = editingId === comment.id;
+            const isDeleted = Boolean(comment.deletedAt);
+            const canModify = !isDeleted && comment.authorId === user?.id;
+            const canDelete = !isDeleted && (canModify || (isAdmin && comment.authorRole === "MEMBER"));
+            const isEditing = !isDeleted && editingId === comment.id;
             return (
               <li key={comment.id} className="flex gap-2.5">
                 <Avatar name={comment.author.name} size="sm" className="mt-0.5 shrink-0" />
@@ -123,7 +124,11 @@ export function CommentsSection({ taskId }: { taskId: string }) {
                     </span>
                   </div>
 
-                  {isEditing ? (
+                  {isDeleted ? (
+                    <p className="mt-0.5 whitespace-pre-wrap text-[13.5px] italic leading-relaxed text-ink-3">
+                      Message deleted by {comment.deletedByName ?? "a user"}
+                    </p>
+                  ) : isEditing ? (
                     <form onSubmit={(e) => submitEdit(e, comment.id)} className="mt-1.5 space-y-2">
                       <Textarea
                         rows={2}
@@ -177,7 +182,7 @@ export function CommentsSection({ taskId }: { taskId: string }) {
         open={!!deletingId}
         onOpenChange={(open) => !open && setDeletingId(null)}
         title="Delete comment?"
-        description="This comment will be permanently deleted."
+        description="The message will be removed and replaced with a deleted-message notice."
         confirmLabel="Delete comment"
         destructive
         loading={deleteComment.isPending}

@@ -368,6 +368,9 @@ export interface Comment {
   taskId: string;
   authorId: string;
   content: string;
+  authorRole?: OrgRole | null;
+  deletedAt: string | null;
+  deletedByName: string | null;
   createdAt: string;
   updatedAt: string;
   author: AssigneeUser;

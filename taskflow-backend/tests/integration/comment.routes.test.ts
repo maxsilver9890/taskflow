@@ -165,7 +165,12 @@ describe("Comment API integration tests", () => {
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(list.status).toBe(200);
-    expect(list.body.total).toBe(0);
+    expect(list.body.total).toBe(1);
+    expect(list.body.data[0]).toMatchObject({
+      content: "",
+      deletedByName: "Comment Test User",
+    });
+    expect(list.body.data[0].deletedAt).toBeTruthy();
   });
 
   it("blocks a member of another organization from reading or writing comments", async () => {
