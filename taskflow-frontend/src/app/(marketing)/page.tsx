@@ -221,9 +221,15 @@ export default function MarketingPage() {
           <a href="#how-it-works" onClick={(event) => scrollToAnchor(event, "how-it-works")}>
             How it works
           </a>
+          <a href="#stack" onClick={(event) => scrollToAnchor(event, "stack")}>
+            Platform
+          </a>
           <a href="#faq">FAQ</a>
           <Link href="/login">Sign in</Link>
         </div>
+        <Link className="nav__cta mono" href="/register">
+          Create workspace
+        </Link>
       </nav>
 
       {/* ══════════════════════ HERO ══════════════════════ */}
@@ -249,8 +255,8 @@ export default function MarketingPage() {
                   from slipping through the cracks.
                 </p>
                 <div className="hero__cta" data-rev style={{ "--d": "140ms" } as React.CSSProperties}>
-                  <Link className="btn" href="#product">
-                    Get started free
+                  <Link className="btn" href="/register">
+                    Create workspace
                   </Link>
                   <Link className="btn btn--ghost" href="#how-it-works">
                     See how it works
@@ -264,7 +270,7 @@ export default function MarketingPage() {
                     Project-wide visibility
                   </span>
                   <span data-rev style={{ "--d": "280ms" } as React.CSSProperties}>
-                    Reliable notifications
+                    Updates with clear ownership
                   </span>
                 </div>
               </div>
@@ -277,38 +283,38 @@ export default function MarketingPage() {
                     <span className="hpc__dot" />
                     <span className="hpc__dot" />
                     <span className="hpc__dot" />
-                    <span className="hpc__title">Customer portal refresh</span>
-                    <span className="hpc__count mono">6 open</span>
+                    <span className="hpc__title">Website redesign</span>
+                    <span className="hpc__count mono">4 tasks</span>
                   </div>
                   <div className="hpc__rows">
                     <div className="hpc__row">
                       <span className="hpc__status hpc__status--progress" aria-hidden="true" />
-                      <span className="hpc__task">Refresh-token rotation</span>
+                      <span className="hpc__task">Map onboarding flow</span>
                       <span className="hpc__assignee mono">LC</span>
                       <span className="hpc__badge hpc__badge--high">High</span>
                     </div>
                     <div className="hpc__row">
                       <span className="hpc__status hpc__status--review" aria-hidden="true" />
-                      <span className="hpc__task">Assignment email copy</span>
+                      <span className="hpc__task">Review dashboard layout</span>
                       <span className="hpc__assignee mono">MP</span>
                       <span className="hpc__badge hpc__badge--medium">Medium</span>
                     </div>
                     <div className="hpc__row">
                       <span className="hpc__status hpc__status--todo" aria-hidden="true" />
-                      <span className="hpc__task">Audit legacy endpoints</span>
+                      <span className="hpc__task">Invite launch team</span>
                       <span className="hpc__assignee mono">—</span>
                       <span className="hpc__badge hpc__badge--low">Low</span>
                     </div>
                     <div className="hpc__row hpc__row--done">
                       <span className="hpc__status hpc__status--done" aria-hidden="true" />
-                      <span className="hpc__task">Org-scoped auth</span>
+                      <span className="hpc__task">Create project brief</span>
                       <span className="hpc__assignee mono">RK</span>
                       <span className="hpc__badge hpc__badge--done">Done</span>
                     </div>
                   </div>
                   <div className="hpc__foot mono">
                     <span className="hpc__foot-dot" />
-                    task_assigned queued · worker picked up in 40ms
+                    assignment update · queued for email delivery
                   </div>
                 </div>
               </div>
@@ -330,39 +336,39 @@ export default function MarketingPage() {
             </svg>
             <div className="architecture__nodes">
               <div className="architecture__node">
-                <span className="architecture__label mono">Input</span>
-                <strong>Team</strong>
-                <span>Create or update work</span>
+                <span className="architecture__label mono">Action</span>
+                <strong>Team workspace</strong>
+                <span>Create, assign, and discuss work</span>
               </div>
               <div className="architecture__node">
                 <span className="architecture__label mono">Core</span>
                 <strong>TaskFlow API</strong>
-                <span>Auth + business rules</span>
+                <span>Sessions + organization roles</span>
               </div>
               <div className="architecture__node">
                 <span className="architecture__label mono">Data</span>
                 <strong>PostgreSQL</strong>
-                <span>Project data</span>
+                <span>Projects, tasks, comments, notifications</span>
               </div>
               <div className="architecture__node">
-                <span className="architecture__label mono">Event</span>
-                <strong>Task event</strong>
-                <span>Assignment or status change</span>
+                <span className="architecture__label mono">Queue</span>
+                <strong>Background job</strong>
+                <span>Assignment, invite, or account email</span>
               </div>
               <div className="architecture__node">
                 <span className="architecture__label mono">Worker</span>
-                <strong>BullMQ</strong>
-                <span>Background processing</span>
+                <strong>Email worker</strong>
+                <span>Processes queued delivery jobs</span>
               </div>
               <div className="architecture__node architecture__node--branch">
                 <span className="architecture__label mono">Delivery</span>
-                <strong>Notification</strong>
-                <span>Reliable delivery</span>
+                <strong>Email provider</strong>
+                <span>Console locally or Resend</span>
               </div>
               <div className="architecture__node architecture__node--branch">
-                <span className="architecture__label mono">State</span>
-                <strong>Project state</strong>
-                <span>Progress, blockers, activity</span>
+                <span className="architecture__label mono">Recovery</span>
+                <strong>Retry + dead letter</strong>
+                <span>Failed jobs remain inspectable</span>
               </div>
             </div>
           </div>
@@ -377,8 +383,8 @@ export default function MarketingPage() {
               </span>
             </h2>
             <p className="frame__lede" data-rev>
-              From an assignment to the resulting notification, TaskFlow connects everyday actions to the systems that
-              keep work moving.
+              Organization-scoped actions are saved first. Email work then runs through a queue with retries and
+              inspectable failures; in-app notifications remain available in the workspace.
             </p>
           </div>
         </div>
@@ -388,51 +394,50 @@ export default function MarketingPage() {
       <section className="band band--explainer band--intelligence">
         <div className="intelligence__head">
           <p className="mono-label mono" data-rev>
-            Project intelligence
+            One connected workspace
           </p>
           <h2 data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
-            Don&apos;t just track work. <em>Understand it.</em>
+            Keep the team, the work, and the context <em>together.</em>
           </h2>
           <p data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
-            TaskFlow is being built to surface the work that needs attention — from overdue tasks and blocked dependencies
-            to project risks and overloaded owners.
+            Bring organization membership, project plans, task ownership, and team updates into one shared workflow.
           </p>
         </div>
         <div className="col">
           <p className="mono-label mono" data-rev>
-            Overdue
+            Organization
           </p>
           <h3 data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
-            Payment API integration
+            Clear team roles
           </h3>
           <p data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
-            3 days overdue
+            Invite teammates as members or organization admins.
           </p>
         </div>
         <div className="col">
           <p className="mono-label mono" data-rev>
-            Blocked
+            Projects & tasks
           </p>
           <h3 data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
-            Production deployment
+            Ownership you can see
           </h3>
           <p data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
-            Waiting on 2 upstream tasks
+            Track status, priority, due dates, and assignees in context.
           </p>
         </div>
         <div className="col">
           <p className="mono-label mono" data-rev>
-            Workload
+            Team context
           </p>
           <h3 data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
-            Team capacity
+            Keep updates with the work
           </h3>
           <p data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
-            One member has significantly more active work than the team average
+            Discuss tasks, follow notifications, and retain a deletion notice when a comment is removed.
           </p>
         </div>
         <p className="intelligence__note" data-rev>
-          Built from the state of your actual work — not another manually maintained status report.
+          One source of context for the day-to-day work your team is already managing.
         </p>
       </section>
 
@@ -446,38 +451,38 @@ export default function MarketingPage() {
               </p>
               <h2 className="log__headline split">
                 <span data-text>
-                  Important work shouldn&apos;t depend on a notification <em>succeeding.</em>
+                  Every update should have a <em>clear path.</em>
                 </span>
               </h2>
               <p data-rev style={{ color: "var(--muted-dark)", fontSize: "13.5px", maxWidth: "36ch", margin: "-16px 0 28px" }}>
-                When work is assigned, TaskFlow handles the notification in the background. Failed deliveries are retried
-                automatically and tracked when they can&apos;t be delivered.
+                TaskFlow creates the relevant in-app updates and queues supported email. The worker retries failed email
+                jobs and records jobs that exhaust their retries for inspection.
               </p>
               <div className="log__rows" id="logRows">
                 <div className="log__row" data-row="0">
-                  <span className="mono">00:00:01</span>
-                  <strong>task_assigned enqueued</strong>
-                  <em>Redis / BullMQ picks it up instantly</em>
+                  <span className="mono">01</span>
+                  <strong>assignment event saved</strong>
+                  <em>Task and notification state are persisted</em>
                 </div>
                 <div className="log__row" data-row="1">
-                  <span className="mono">00:00:02</span>
-                  <strong>attempt 1 / 3</strong>
-                  <em>Email dispatch begins</em>
+                  <span className="mono">02</span>
+                  <strong>email job queued</strong>
+                  <em>Redis and BullMQ hold the delivery work</em>
                 </div>
                 <div className="log__row" data-row="2">
-                  <span className="mono">00:00:04</span>
-                  <strong>retry · backoff 2s</strong>
-                  <em>Transient failure, retried automatically</em>
+                  <span className="mono">03</span>
+                  <strong>delivery attempt</strong>
+                  <em>The worker sends through the configured provider</em>
                 </div>
                 <div className="log__row" data-row="3">
-                  <span className="mono">00:00:08</span>
-                  <strong>retry · backoff 4s</strong>
-                  <em>Third attempt, exponential backoff</em>
+                  <span className="mono">04</span>
+                  <strong>retry with backoff</strong>
+                  <em>Transient failures get another attempt</em>
                 </div>
                 <div className="log__row" data-row="4">
-                  <span className="mono">00:00:12</span>
-                  <strong>moved to dead-letter queue</strong>
-                  <em>Exhausted retries land here, not lost</em>
+                  <span className="mono">05</span>
+                  <strong>delivered or moved to dead letter</strong>
+                  <em>Exhausted failures remain available for inspection</em>
                 </div>
               </div>
             </div>
@@ -487,24 +492,24 @@ export default function MarketingPage() {
                   <path className="log__path" d="M52 140 H588" pathLength="1" />
                   <g className="log__node" data-row="0">
                     <circle cx="52" cy="140" r="13" />
-                    <text x="52" y="102">Enqueued</text>
+                    <text x="52" y="102">Saved</text>
                   </g>
                   <g className="log__node" data-row="1">
                     <circle cx="186" cy="140" r="13" />
-                    <text x="186" y="102">Attempt 1</text>
+                    <text x="186" y="102">Queued</text>
                   </g>
                   <g className="log__node" data-row="2">
                     <circle cx="320" cy="140" r="13" />
-                    <text x="320" y="102">Retry (2s)</text>
+                    <text x="320" y="102">Attempt</text>
                   </g>
                   <g className="log__node" data-row="3">
                     <circle cx="454" cy="140" r="13" />
-                    <text x="454" y="102">Retry (4s)</text>
+                    <text x="454" y="102">Retry</text>
                   </g>
                   <g className="log__node log__node--final" data-row="4">
                     <circle cx="588" cy="140" r="13" />
-                    <text x="588" y="102">Delivered</text>
-                    <text className="log__dead-letter" x="588" y="194">Dead-letter</text>
+                    <text x="588" y="102">Outcome</text>
+                    <text className="log__dead-letter" x="588" y="194">Delivered / DLQ</text>
                   </g>
                   <circle className="log__dot" cx="0" cy="0" r="7" />
                 </svg>
@@ -572,7 +577,7 @@ export default function MarketingPage() {
               Runtime
             </span>
             <span className="value mono" data-rev>
-              Node.js 24 · TypeScript · Express 5
+              Node.js 22+ · TypeScript · Express 5
             </span>
           </div>
           <div className="stack__row">
@@ -612,7 +617,7 @@ export default function MarketingPage() {
               Deploy
             </span>
             <span className="value mono" data-rev style={{ "--d": "200ms" } as React.CSSProperties}>
-              Docker Compose · Render · GitHub Actions
+              Docker Compose · GitHub Actions
             </span>
           </div>
         </div>
@@ -624,9 +629,8 @@ export default function MarketingPage() {
         <div className="faq__item">
           <h4 data-rev>What is TaskFlow?</h4>
           <p data-rev>
-            A project and task management platform built for teams that need real accountability: every project and
-            task belongs to an organization, every assignment is tracked, and background notifications are delivered
-            reliably instead of silently failing.
+            A project and task management workspace for teams that need clear ownership: projects and tasks belong to an
+            organization, and supported email jobs are retried with failures kept available for inspection.
           </p>
         </div>
         <div className="faq__item">
@@ -667,19 +671,46 @@ export default function MarketingPage() {
           </p>
         </div>
         <div className="faq__item">
+          <h4 data-rev style={{ "--d": "180ms" } as React.CSSProperties}>
+            How do organization invitations work?
+          </h4>
+          <p data-rev style={{ "--d": "180ms" } as React.CSSProperties}>
+            Organization admins invite an email address with a selected role. Invitees sign in, verify their email, and
+            accept or reject the invitation; invitations expire after seven days.
+          </p>
+        </div>
+        <div className="faq__item">
           <h4 data-rev style={{ "--d": "200ms" } as React.CSSProperties}>
-            Can TaskFlow integrate with other applications?
+            Can teammates discuss work in context?
           </h4>
           <p data-rev style={{ "--d": "200ms" } as React.CSSProperties}>
+            Tasks have comments. Authors can edit their own comments, members can remove their own, and admins can
+            moderate comments by members. Removed messages leave a named deletion notice in the thread.
+          </p>
+        </div>
+        <div className="faq__item">
+          <h4 data-rev style={{ "--d": "220ms" } as React.CSSProperties}>
+            Can I reset my password?
+          </h4>
+          <p data-rev style={{ "--d": "220ms" } as React.CSSProperties}>
+            Request a reset link from the sign-in flow. Completing a reset changes the password and signs out existing
+            sessions, so you can sign in again with the new password.
+          </p>
+        </div>
+        <div className="faq__item">
+          <h4 data-rev style={{ "--d": "240ms" } as React.CSSProperties}>
+            Can TaskFlow integrate with other applications?
+          </h4>
+          <p data-rev style={{ "--d": "240ms" } as React.CSSProperties}>
             TaskFlow exposes a documented REST API with OpenAPI/Swagger documentation, so applications can make
             authenticated HTTP requests to work with projects, tasks, assignments, and job status.
           </p>
         </div>
         <div className="faq__item">
-          <h4 data-rev style={{ "--d": "240ms" } as React.CSSProperties}>
+          <h4 data-rev style={{ "--d": "280ms" } as React.CSSProperties}>
             Is the source code available?
           </h4>
-          <p data-rev style={{ "--d": "240ms" } as React.CSSProperties}>
+          <p data-rev style={{ "--d": "280ms" } as React.CSSProperties}>
             Yes — the backend and frontend are both open on GitHub.
           </p>
         </div>
@@ -695,7 +726,7 @@ export default function MarketingPage() {
         </p>
         <div className="btn-row" data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
           <Link className="btn" href="/register">
-            Get started free
+            Create workspace
           </Link>
           <Link className="btn btn--ghost" href="/login">
             Sign in
@@ -714,7 +745,7 @@ export default function MarketingPage() {
             <a href="#stack">See the architecture</a>
           </span>
           <div className="footer__links">
-            <a href="https://github.com/maxsilver9890/taskflow-backend">GitHub</a>
+            <a href="https://github.com/maxsilver9890/taskflow">GitHub</a>
             <a href="https://taskflow-backend-api-7iwy.onrender.com/api-docs">API docs</a>
             <a href="#stage1">Back to top</a>
           </div>
