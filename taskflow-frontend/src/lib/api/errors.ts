@@ -56,6 +56,7 @@ export function parseErrorBody(status: number, body: unknown): ApiError {
 const FRIENDLY: Record<string, string> = {
   INVALID_CREDENTIALS: "That email and password don’t match an account.",
   EMAIL_IN_USE: "An account with this email already exists.",
+  FIREBASE_LINK_CONFLICT: "This account is already linked to a different Firebase identity. Contact support if you think this is a mistake.",
   RATE_LIMIT_EXCEEDED: "Too many sign-in attempts. Wait a minute and try again.",
   TOKEN_INVALID: "Your session has expired. Please sign in again.",
   TOKEN_REVOKED: "Your session was ended. Please sign in again.",

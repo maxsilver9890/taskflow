@@ -7,7 +7,7 @@ import { Suspense, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
-import { errorMessage } from "@/lib/api/errors";
+import { ApiError, errorMessage } from "@/lib/api/errors";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { DEMO_ACCOUNTS, config } from "@/lib/config";
 import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
@@ -21,7 +21,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const { login, resendFirebaseVerification } = useAuth();
+  const { login, linkFirebaseAccount, resendFirebaseVerification } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
@@ -31,6 +31,9 @@ function LoginForm() {
   const [canResend, setCanResend] = useState(false);
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showLinkRecovery, setShowLinkRecovery] = useState(false);
+  const [taskflowPassword, setTaskflowPassword] = useState("");
+  const [linking, setLinking] = useState(false);
 
 
   async function submit(e: FormEvent) {
@@ -42,6 +45,7 @@ function LoginForm() {
 
     try {
       await login({ email: email.trim(), password });
+      setShowLinkRecovery(false);
       const next = safeNextPath(params.get("next")) ?? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY));
       sessionStorage.removeItem(PENDING_AUTH_NEXT_KEY);
       router.replace(next ?? "/dashboard");
@@ -49,8 +53,25 @@ function LoginForm() {
       const message = errorMessage(err);
       setError(message);
       setCanResend(message.toLowerCase().includes("isn't verified"));
+      setShowLinkRecovery(err instanceof ApiError && err.code === "EMAIL_IN_USE");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function recoverLink(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLinking(true);
+    try {
+      await linkFirebaseAccount(taskflowPassword);
+      const next = safeNextPath(params.get("next")) ?? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY));
+      sessionStorage.removeItem(PENDING_AUTH_NEXT_KEY);
+      router.replace(next ?? "/dashboard");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLinking(false);
     }
   }
 
@@ -87,6 +108,9 @@ function LoginForm() {
     <div className="tf-slide-in">
       <h1 className="font-display text-[24px] font-bold text-ink">Welcome back</h1>
       <p className="mt-1 text-[13.5px] text-ink-3">Sign in to your TaskFlow workspace.</p>
+      <p className="mt-2 text-[12.5px] text-ink-3">
+        To link an existing TaskFlow account, sign in here with your Firebase password. If that email already has a TaskFlow account, you&apos;ll then be asked for its existing TaskFlow password.
+      </p>
 
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
         <div>
@@ -149,6 +173,31 @@ function LoginForm() {
           <ArrowRight className="size-4" />
         </Button>
       </form>
+
+      {showLinkRecovery && (
+        <form onSubmit={recoverLink} className="mt-5 space-y-3 rounded-xl border border-line bg-surface-2 p-4">
+          <div>
+            <h2 className="text-[14px] font-semibold text-ink">Link your existing TaskFlow account</h2>
+            <p className="mt-1 text-[12.5px] text-ink-3">
+              This email already has a TaskFlow account. Enter that account&apos;s TaskFlow password to connect it to the verified Firebase account. Your existing workspace and data stay in place.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="taskflow-password">Existing TaskFlow password</Label>
+            <Input
+              id="taskflow-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={taskflowPassword}
+              onChange={(e) => setTaskflowPassword(e.target.value)}
+            />
+          </div>
+          <Button type="submit" className="w-full" loading={linking} disabled={!taskflowPassword}>
+            Verify and link accounts
+          </Button>
+        </form>
+      )}
 
       {config.demoMode && (
         <div className="mt-6 rounded-xl border border-line bg-surface-2 p-4">

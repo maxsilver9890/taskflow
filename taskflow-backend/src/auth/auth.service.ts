@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { firebaseAdminAuth } from "../lib/firebase-admin.js";
-import type { FirebaseExchangeBody } from "./auth.schemas.js";
+import type { FirebaseExchangeBody, FirebaseLinkBody } from "./auth.schemas.js";
 import bcrypt from "bcrypt";
 import type { PrismaClient } from "@prisma/client";
 import type { Queue } from "bullmq";
@@ -794,4 +794,80 @@ export async function firebaseExchange(
     organization: created.organization,
     ...tokens
   };
+}
+
+/**
+ * Link a verified Firebase identity to the TaskFlow account authenticated by
+ * the caller's password-login session. This mutates only users.firebaseUid;
+ * all existing user-owned data and sessions remain intact.
+ */
+export async function linkFirebaseAccount(
+  db: PrismaClient,
+  userId: string,
+  body: FirebaseLinkBody
+) {
+  let decoded;
+
+  try {
+    decoded = await firebaseAdminAuth.verifyIdToken(body.idToken, true);
+  } catch {
+    throw AuthErrors.INVALID_CREDENTIALS();
+  }
+
+  if (!decoded.email || decoded.email_verified !== true) {
+    throw AuthErrors.INVALID_CREDENTIALS();
+  }
+
+  const email = decoded.email.trim().toLowerCase();
+  const account = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, emailVerified: true, firebaseUid: true }
+  });
+  if (
+    !account || !account.emailVerified ||
+    account.email.trim().toLowerCase() !== email
+  ) {
+    throw AuthErrors.INVALID_CREDENTIALS();
+  }
+
+  if (account.firebaseUid === decoded.uid) {
+    return { linked: true, alreadyLinked: true };
+  }
+  if (account.firebaseUid !== null) {
+    throw AuthErrors.FIREBASE_LINK_CONFLICT();
+  }
+
+  const existingUidOwner = await db.user.findUnique({
+    where: { firebaseUid: decoded.uid },
+    select: { id: true }
+  });
+  if (existingUidOwner) {
+    throw AuthErrors.FIREBASE_LINK_CONFLICT();
+  }
+
+  try {
+    const updated = await db.user.updateMany({
+      where: { id: account.id, firebaseUid: null },
+      data: { firebaseUid: decoded.uid }
+    });
+    if (updated.count === 1) return { linked: true, alreadyLinked: false };
+  } catch (error) {
+    if (
+      typeof error === "object" && error !== null &&
+      "code" in error && error.code === "P2002"
+    ) {
+      throw AuthErrors.FIREBASE_LINK_CONFLICT();
+    }
+    throw error;
+  }
+
+  // A concurrent retry for the same account/UID is successful and idempotent.
+  const current = await db.user.findUnique({
+    where: { id: account.id },
+    select: { firebaseUid: true }
+  });
+  if (current?.firebaseUid === decoded.uid) {
+    return { linked: true, alreadyLinked: true };
+  }
+  throw AuthErrors.FIREBASE_LINK_CONFLICT();
 }

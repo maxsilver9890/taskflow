@@ -21,6 +21,9 @@ export const AuthErrors = {
   EMAIL_IN_USE: () =>
     new AppError(409, "EMAIL_IN_USE", "An account with this email already exists."),
 
+  FIREBASE_LINK_CONFLICT: () =>
+    new AppError(409, "FIREBASE_LINK_CONFLICT", "This account is already linked to a different Firebase identity."),
+
   INVALID_CREDENTIALS: () =>
     new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password."),
 

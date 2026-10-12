@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["tests/helpers/test-setup.ts"],
     // Ensure each file gets a fresh module registry (important for Prisma singleton).
     isolate: true,
     fileParallelism: false,

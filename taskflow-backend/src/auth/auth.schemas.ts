@@ -136,5 +136,12 @@ export const firebaseExchangeSchema = z.object({
   }),
 });
 
+export const firebaseLinkSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1, "Firebase ID token is required"),
+  }),
+});
+
 export type FirebaseExchangeBody =
   z.infer<typeof firebaseExchangeSchema>["body"];
+export type FirebaseLinkBody = z.infer<typeof firebaseLinkSchema>["body"];

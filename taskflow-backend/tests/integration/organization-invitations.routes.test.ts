@@ -5,6 +5,7 @@ import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
 import { setOrganizationEmailQueue } from "../../src/organizations/organization.controller.js";
 import { hashToken, signAccessToken } from "../../src/lib/jwt.js";
+import { resetTestDatabase } from "../helpers/test-db.js";
 
 const redisStub = () => ({ status: "ready", ping: async () => "PONG", quit: async () => {} }) as unknown as import("ioredis").default;
 
@@ -20,7 +21,7 @@ describe("organization invitation lifecycle", () => {
   let emailJob: { data: { inviteUrl: string } } | undefined;
 
   async function resetDatabase() {
-    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "notifications", "organization_invitations", "comments", "task_assignments", "tasks", "projects", "refresh_tokens", "email_verification_otps", "password_reset_tokens", "pending_registrations", "org_members", "organizations", "users" CASCADE`);
+    await resetTestDatabase(prisma);
     const org = await prisma.organization.create({ data: { name: "Orbit" } });
     organizationId = org.id;
     const admin = await prisma.user.create({ data: { email: "admin@orbit.test", name: "Admin", passwordHash: "unused", emailVerified: true } });

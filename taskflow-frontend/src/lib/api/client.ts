@@ -174,6 +174,16 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   }
 }
 
+/** Send one authenticated request with a freshly obtained token without storing it in browser session state. */
+export async function apiWithAccessToken<T>(
+  path: string,
+  opts: RequestOptions,
+  accessToken: string,
+): Promise<T> {
+  if (!accessToken) throw new ApiError(401, "TOKEN_MISSING", "Not signed in");
+  return rawRequest<T>(path, opts, accessToken);
+}
+
 /**
  * 401s whose cause is NOT "this access token is stale" — refreshing and
  * blindly retrying would just resend the same (still-wrong) request body,

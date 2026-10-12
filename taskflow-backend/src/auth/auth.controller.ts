@@ -15,7 +15,8 @@ import {
   selectOrganizationSchema,
   verifyEmailSchema,
   resendVerificationSchema,
-  firebaseExchangeSchema
+  firebaseExchangeSchema,
+  firebaseLinkSchema
 } from "./auth.schemas.js";
 import * as AuthService from "./auth.service.js";
 
@@ -190,6 +191,21 @@ export async function firebaseExchangeHandler(
     });
 
     const result = await AuthService.firebaseExchange(prisma, body);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function firebaseLinkHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { body } = firebaseLinkSchema.parse({ body: req.body });
+    if (!req.auth) throw new Error("Authentication context missing");
+    const result = await AuthService.linkFirebaseAccount(prisma, req.auth.userId, body);
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -53,6 +53,7 @@ interface AuthContextValue {
   emailVerified: boolean;
   resendFirebaseVerification: (input: LoginInput) => Promise<void>;
   login: (input: LoginInput) => Promise<void>;
+  linkFirebaseAccount: (password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   switchOrganization: (organizationId: string) => Promise<void>;
@@ -188,6 +189,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [queryClient]);
 
+  const linkFirebaseAccount = useCallback(async (password: string) => {
+    const user = firebaseAuth.currentUser;
+    if (!user) throw new Error("Sign in with Firebase again before linking your TaskFlow account.");
+
+    await user.reload();
+    if (!user.email || !user.emailVerified) {
+      throw new Error("Verify the Firebase email address before linking accounts.");
+    }
+
+    const taskflowSession = await authApi.login({ email: user.email, password });
+    try {
+      const idToken = await user.getIdToken(true);
+      await authApi.linkFirebase({ idToken }, taskflowSession.accessToken);
+    } finally {
+      // The password login is used only to prove the TaskFlow account. Revoke
+      // its unused refresh token; the normal Firebase exchange issues the
+      // session that will actually be stored in the browser.
+      try {
+        await authApi.logout(taskflowSession.refreshToken);
+      } catch {
+        // The raw token was not written to browser storage; if logout is
+        // unreachable, it remains usable only until its normal expiration.
+      }
+    }
+    await exchangeFirebaseUser(user, null);
+    queryClient.clear();
+  }, [queryClient]);
+
   const resendFirebaseVerification = useCallback(
     async (input: LoginInput) => {
       const credential = await signInWithEmailAndPassword(
@@ -289,6 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: (claims?.role ?? session?.activeOrganization?.role) === "ORG_ADMIN",
       emailVerified: claims?.emailVerified ?? true,
       login,
+      linkFirebaseAccount,
       resendFirebaseVerification,
       register,
       logout,
@@ -301,6 +331,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     claims,
     login,
+    linkFirebaseAccount,
     resendFirebaseVerification,
     register,
     logout,

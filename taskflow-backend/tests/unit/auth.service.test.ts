@@ -8,7 +8,7 @@
  * (Requires vitest to be installed: npm install -D vitest)
  */
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi, beforeEach } from "vitest";
 import bcrypt from "bcrypt";
 
 import { hashToken, signRefreshToken, verifyAccessToken } from "../../src/lib/jwt.js";
@@ -21,6 +21,7 @@ import {
   resetPassword,
   selectOrganization
 } from "../../src/auth/auth.service.js";
+import { firebaseAdminAuth } from "../../src/lib/firebase-admin.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,9 @@ function makePrismaMock() {
     user: {
       create: vi.fn(),
       findUnique: vi.fn(),
-      update: vi.fn()
+      findMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn()
     },
     orgMember: {
       create: vi.fn(),
@@ -92,8 +95,8 @@ describe("auth.service — register", () => {
   it("stores a pending registration and queues an OTP without creating a user, organization, membership, or tokens", async () => {
     (db.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    let saved: any;
-    (db.pendingRegistration.upsert as ReturnType<typeof vi.fn>).mockImplementation(({ create }: { create: unknown }) => { saved = create; return Promise.resolve(create); });
+    let saved: { passwordHash: string; otpHash: string } | undefined;
+    (db.pendingRegistration.upsert as ReturnType<typeof vi.fn>).mockImplementation(({ create }: { create: unknown }) => { saved = create as { passwordHash: string; otpHash: string }; return Promise.resolve(create); });
     const queue = makeQueueStub();
     const result = await register(db, queue, {
       email: "alice@example.com", name: "Alice", password: "plaintextpassword", organizationName: "Acme"
@@ -101,9 +104,10 @@ describe("auth.service — register", () => {
 
     expect(result).toMatchObject({ email: "alice@example.com", expiresInMinutes: 10 });
     expect("accessToken" in result).toBe(false);
-    expect(saved.passwordHash).not.toBe("plaintextpassword");
-    expect(await bcrypt.compare("plaintextpassword", saved.passwordHash)).toBe(true);
-    expect(saved.otpHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(saved).toBeDefined();
+    expect(saved!.passwordHash).not.toBe("plaintextpassword");
+    expect(await bcrypt.compare("plaintextpassword", saved!.passwordHash)).toBe(true);
+    expect(saved!.otpHash).toMatch(/^[a-f0-9]{64}$/);
     expect(db.user.create).not.toHaveBeenCalled();
     expect(db.$transaction).not.toHaveBeenCalled();
     expect(db.refreshToken.create).not.toHaveBeenCalled();
@@ -135,6 +139,120 @@ describe("auth.service — register", () => {
     const _role:  HasNoRole  = false;
     expect(_orgId).toBe(false);
     expect(_role).toBe(false);
+  });
+});
+
+describe("auth.service — Firebase account linking", () => {
+  const email = "owner@example.com";
+  const password = "ExistingPassword123!";
+  const uid = "firebase-uid-1";
+  let db: ReturnType<typeof makePrismaMock>;
+  let account: { id: string; email: string; passwordHash: string; emailVerified: boolean; firebaseUid: string | null };
+  let verifyToken: ReturnType<typeof vi.spyOn>;
+
+  beforeAll(async () => {
+    account = {
+      id: "existing-user",
+      email,
+      passwordHash: await bcrypt.hash(password, 4),
+      emailVerified: true,
+      firebaseUid: null
+    };
+  });
+
+  beforeEach(() => {
+    db = makePrismaMock();
+    db.user.findUnique = vi.fn().mockImplementation(({ where }: { where: Record<string, string> }) =>
+      Promise.resolve(where.id === account.id ? account : null)) as never;
+    db.user.updateMany = vi.fn().mockResolvedValue({ count: 1 }) as never;
+    verifyToken = vi.spyOn(firebaseAdminAuth, "verifyIdToken").mockResolvedValue({
+      uid,
+      email: " OWNER@example.com ",
+      email_verified: true
+    } as Awaited<ReturnType<typeof firebaseAdminAuth.verifyIdToken>>);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("links only the authenticated TaskFlow account after verifying the Firebase token", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" })).resolves.toEqual({ linked: true, alreadyLinked: false });
+    expect(verifyToken).toHaveBeenCalledWith("fresh-token", true);
+    expect(db.user.updateMany).toHaveBeenCalledWith({
+      where: { id: account.id, firebaseUid: null },
+      data: { firebaseUid: uid }
+    });
+    expect(db.orgMember.create).not.toHaveBeenCalled();
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing, invalid, or unverified Firebase identities", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    verifyToken.mockRejectedValueOnce(new Error("invalid token"));
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "bad-token" })).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    verifyToken.mockResolvedValueOnce({ uid, email, email_verified: false } as Awaited<ReturnType<typeof firebaseAdminAuth.verifyIdToken>>);
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "unverified-token" })).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(db.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not link when the verified Firebase email does not match the TaskFlow account", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    db.user.findUnique = vi.fn().mockResolvedValue({ ...account, email: "different@example.com" }) as never;
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" }))
+      .rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(db.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Firebase UID already owned by another TaskFlow user", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    db.user.findUnique = vi.fn().mockImplementation(({ where }: { where: Record<string, string> }) =>
+      Promise.resolve(where.id === account.id ? account : { id: "different-user" })) as never;
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" }))
+      .rejects.toMatchObject({ code: "FIREBASE_LINK_CONFLICT" });
+    expect(db.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent Firebase UID unique-constraint race to a conflict", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    db.user.updateMany = vi.fn().mockRejectedValue({ code: "P2002" }) as never;
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" }))
+      .rejects.toMatchObject({ code: "FIREBASE_LINK_CONFLICT", statusCode: 409 });
+  });
+
+  it("makes an already-linked retry idempotent without updating the account", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    db.user.findUnique = vi.fn().mockResolvedValue({ ...account, firebaseUid: uid }) as never;
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" })).resolves.toEqual({ linked: true, alreadyLinked: true });
+    expect(db.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects an account that is already linked to a different Firebase UID", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    db.user.findUnique = vi.fn().mockResolvedValue({ ...account, firebaseUid: "another-uid" }) as never;
+    await expect(linkFirebaseAccount(db, account.id, { idToken: "fresh-token" }))
+      .rejects.toMatchObject({ code: "FIREBASE_LINK_CONFLICT" });
+    expect(db.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("allows only one conditional update during concurrent linking attempts", async () => {
+    const { linkFirebaseAccount } = await import("../../src/auth/auth.service.js");
+    const accountLookupCount = { count: 0 };
+    db.user.findUnique = vi.fn().mockImplementation(({ where, select }: { where: Record<string, string>; select?: Record<string, boolean> }) => {
+      if (where.id === account.id && select?.firebaseUid && !select.email) return Promise.resolve({ firebaseUid: uid });
+      if (where.id === account.id) { accountLookupCount.count++; return Promise.resolve(account); }
+      return Promise.resolve(null);
+    }) as never;
+    db.user.updateMany = vi.fn()
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 }) as never;
+
+    const results = await Promise.all([
+      linkFirebaseAccount(db, account.id, { idToken: "fresh-token" }),
+      linkFirebaseAccount(db, account.id, { idToken: "fresh-token" })
+    ]);
+    expect(results).toHaveLength(2);
+    expect(results.map((result) => result.alreadyLinked).sort()).toEqual([false, true]);
+    expect(db.user.updateMany).toHaveBeenCalledTimes(2);
   });
 });
 

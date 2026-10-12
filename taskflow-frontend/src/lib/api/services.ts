@@ -1,5 +1,5 @@
 
-import { api } from "./client";
+import { api, apiWithAccessToken } from "./client";
 import type {
   AssignmentResult,
   Comment,
@@ -9,6 +9,7 @@ import type {
   ForgotPasswordInput,
   FirebaseExchangeInput,
   FirebaseExchangeResponse,
+  FirebaseLinkInput,
   JobInfo,
   LoginInput,
   LoginResponse,
@@ -55,6 +56,12 @@ export const authApi = {
     api<LoginResponse>("/auth/login", { method: "POST", body: input, anonymous: true }),
   firebaseExchange: (input: FirebaseExchangeInput) =>
     api<FirebaseExchangeResponse>("/auth/firebase-exchange", { method: "POST", body: input, anonymous: true }),
+  linkFirebase: (input: FirebaseLinkInput, accessToken: string) =>
+    apiWithAccessToken<{ linked: boolean; alreadyLinked: boolean }>(
+      "/auth/firebase-link",
+      { method: "POST", body: input },
+      accessToken,
+    ),
   register: (input: RegisterInput) =>
     api<RegisterResponse>("/auth/register", { method: "POST", body: input, anonymous: true }),
   verifyRegistration: (input: VerifyRegistrationInput) =>

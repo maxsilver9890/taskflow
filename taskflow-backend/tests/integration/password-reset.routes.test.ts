@@ -16,6 +16,7 @@ import { createApp } from "../../src/app.js";
 import * as AuthService from "../../src/auth/auth.service.js";
 import type { EmailJobPayload } from "../../src/jobs/queue.js";
 import { createTestEmailCapture } from "../helpers/email-capture.js";
+import { resetTestDatabase as resetSharedTestDatabase } from "../helpers/test-db.js";
 
 function makeRedisStub() {
   return {
@@ -39,21 +40,7 @@ function makeCapturingQueue() {
 }
 
 async function resetTestDatabase() {
-  await prisma.$executeRawUnsafe(`
-    TRUNCATE TABLE
-      "comments",
-      "task_assignments",
-      "tasks",
-      "projects",
-      "password_reset_tokens",
-      "refresh_tokens",
-      "email_verification_otps",
-      "pending_registrations",
-      "org_members",
-      "organizations",
-      "users"
-    CASCADE;
-  `);
+  await resetSharedTestDatabase(prisma);
 }
 
 describe("Password reset integration tests", () => {

@@ -2,7 +2,7 @@
 import { Router } from "express";
 
 import { authRateLimiter } from "../middleware/rate-limit.js";
-import { authenticate } from "../middleware/authenticate.js";
+import { authenticate, requireVerifiedEmail } from "../middleware/authenticate.js";
 import {
   forgotPasswordHandler,
   loginHandler,
@@ -15,7 +15,8 @@ import {
   resendVerificationHandler,
   verifyRegistrationHandler,
   resendRegistrationHandler,
-  firebaseExchangeHandler
+  firebaseExchangeHandler,
+  firebaseLinkHandler
 } from "./auth.controller.js";
 
 export function createAuthRouter(): Router {
@@ -33,6 +34,9 @@ export function createAuthRouter(): Router {
 
   // Firebase login/signup token exchange.
   router.post("/firebase-exchange", firebaseExchangeHandler);
+  // Explicit account recovery: requires a password-authenticated TaskFlow
+  // session plus a verified Firebase ID token. Auth rate limiting still applies.
+  router.post("/firebase-link", authenticate, requireVerifiedEmail, firebaseLinkHandler);
 
   router.post("/refresh", refreshHandler);
   router.post("/select-org", authenticate, selectOrganizationHandler);

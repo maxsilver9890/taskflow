@@ -47,6 +47,11 @@ export interface FirebaseExchangeInput {
   organizationName?: string;
 }
 
+/** POST /auth/firebase-link; both proofs are verified by the backend. */
+export interface FirebaseLinkInput {
+  idToken: string;
+}
+
 export interface FirebaseExchangeResponse extends TokenPair {
   user: AuthUser;
   organization: { id: string; name: string };

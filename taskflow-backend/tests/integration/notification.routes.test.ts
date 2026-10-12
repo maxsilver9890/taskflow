@@ -4,6 +4,7 @@ import request from "supertest";
 import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
 import { createTestEmailCapture } from "../helpers/email-capture.js";
+import { resetTestDatabase } from "../helpers/test-db.js";
 let emailCapture: ReturnType<typeof createTestEmailCapture>;
 
 function redisStub() {
@@ -15,11 +16,7 @@ function redisStub() {
 }
 
 async function resetDatabase() {
-  await prisma.$executeRawUnsafe(`
-    TRUNCATE TABLE "notifications", "comments", "task_assignments", "tasks",
-      "projects", "refresh_tokens","email_verification_otps","password_reset_tokens","pending_registrations", "org_members", "organizations", "users"
-    CASCADE;
-  `);
+  await resetTestDatabase(prisma);
 }
 
 async function getVerifiedToken(

@@ -26,7 +26,7 @@
     "test:unit": "cross-env NODE_ENV=test dotenv -e .env.test -- vitest run tests/unit",
     "test:integration": "cross-env NODE_ENV=test dotenv -e .env.test -- vitest run tests/integration",
     "lint": "eslint .",
-    "test:migrate": "dotenv -e .env.test -- prisma migrate deploy"
+    "test:migrate": "cross-env NODE_ENV=test dotenv -e .env.test -- tsx scripts/test-migrate.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
