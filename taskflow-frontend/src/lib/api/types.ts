@@ -318,6 +318,9 @@ export interface OrganizationInvitation {
   role: OrgRole;
   createdAt: string;
   expiresAt?: string;
+  acceptedAt?: string | null;
+  cancelledAt?: string | null;
+  rejectedAt?: string | null;
 }
 
 export interface PublicOrganizationInvitation {

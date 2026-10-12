@@ -81,6 +81,17 @@ export default function TeamPage() {
     queryFn: () => organizationsApi.invitations(),
     enabled: isAdmin && !!orgId,
   });
+  const invitationRows = invitations.data?.data ?? [];
+  const now = Date.now();
+  const pendingInvitations = invitationRows.filter((invitation) =>
+    !invitation.acceptedAt &&
+    !invitation.cancelledAt &&
+    !invitation.rejectedAt &&
+    Boolean(invitation.expiresAt && new Date(invitation.expiresAt).getTime() > now)
+  );
+  const rejectedInvitations = invitationRows.filter((invitation) =>
+    Boolean(invitation.rejectedAt) && !invitation.cancelledAt && !invitation.acceptedAt
+  );
   const cancelInvitation = useMutation({
     mutationFn: (id: string) => organizationsApi.cancelInvitation(id),
     onSuccess: () => {
@@ -114,14 +125,14 @@ export default function TeamPage() {
           </table></div>}
         {total > members.length && <p className="mt-2 text-[12px] text-ink-3">Showing {members.length} of {total} members.</p>}
       </div>
-      {isAdmin && invitations.data?.data.length ? (
+      {isAdmin && pendingInvitations.length > 0 ? (
         <div className="px-4 pb-4 md:px-6">
           <div className="rounded-xl border border-line bg-surface">
             <div className="border-b border-line px-4 py-3">
               <h2 className="text-[13px] font-semibold text-ink">Pending invitations</h2>
             </div>
             <div className="divide-y divide-line">
-              {invitations.data.data.map((invitation) => (
+              {pendingInvitations.map((invitation) => (
                 <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px]">
                   <div>
                     <p className="font-medium text-ink">{invitation.email}</p>
@@ -137,6 +148,27 @@ export default function TeamPage() {
                   >
                     Cancel
                   </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isAdmin && rejectedInvitations.length > 0 ? (
+        <div className="px-4 pb-4 md:px-6">
+          <div className="rounded-xl border border-line bg-surface">
+            <div className="border-b border-line px-4 py-3">
+              <h2 className="text-[13px] font-semibold text-ink">Rejected invitations</h2>
+            </div>
+            <div className="divide-y divide-line">
+              {rejectedInvitations.map((invitation) => (
+                <div key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px]">
+                  <div>
+                    <p className="font-medium text-ink">{invitation.email}</p>
+                    <p className="text-[11.5px] text-ink-3">
+                      {invitation.role === "ORG_ADMIN" ? "Org admin" : "Member"} · Rejected
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

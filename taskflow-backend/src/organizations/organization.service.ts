@@ -255,7 +255,16 @@ export async function getPublicInvitation(db: PrismaClient, token: string) {
 export async function cancelInvite(db: PrismaClient, organizationId: string, role: string, id: string) {
   await requireAdmin(db, organizationId, role);
   const result = await OrganizationData.cancelInvitation(db, organizationId, id);
-  if (!result.count) throw new AppError(404, "INVITATION_NOT_FOUND", "Invitation not found.");
+  if (!result.count) {
+    const existing = await db.organizationInvitation.findFirst({
+      where: { id, organizationId },
+      select: { cancelledAt: true },
+    });
+    // DELETE is idempotent for an invitation this organization already cancelled.
+    if (!existing?.cancelledAt) {
+      throw new AppError(404, "INVITATION_NOT_FOUND", "Invitation not found.");
+    }
+  }
 }
 
 export async function acceptInvitation(db: PrismaClient, userId: string, token: string) {
