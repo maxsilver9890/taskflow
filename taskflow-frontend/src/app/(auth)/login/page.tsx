@@ -106,10 +106,10 @@ function LoginForm() {
 
   return (
     <div className="tf-slide-in">
-      <h1 className="font-display text-[24px] font-bold text-ink">Welcome back</h1>
-      <p className="mt-1 text-[13.5px] text-ink-3">Sign in to your TaskFlow workspace.</p>
+      <h1 className="font-display text-[24px] font-bold text-ink">Log in to your workspace</h1>
+      <p className="mt-1 text-[13.5px] text-ink-3">Access your projects, tasks, and team updates.</p>
       <p className="mt-2 text-[12.5px] text-ink-3">
-        To link an existing TaskFlow account, sign in here with your Firebase password. If that email already has a TaskFlow account, you&apos;ll then be asked for its existing TaskFlow password.
+        To link an existing TaskFlow account, log in here with your Firebase password. If that email already has a TaskFlow account, you&apos;ll then be asked for its existing TaskFlow password.
       </p>
 
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
@@ -169,7 +169,7 @@ function LoginForm() {
 
 
         <Button type="submit" className="w-full" size="lg" loading={loading}>
-          Sign in
+          Log in
           <ArrowRight className="size-4" />
         </Button>
       </form>
@@ -231,9 +231,9 @@ function LoginForm() {
       )}
 
       <p className="mt-6 text-center text-[13px] text-ink-3">
-        Don&apos;t have an account?{" "}
+        New to TaskFlow?{" "}
         <Link href="/register" className="font-medium text-brand hover:underline">
-          Create one
+          Create an account
         </Link>
       </p>
     </div>

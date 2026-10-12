@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
           reset your password. It expires in 1 hour.
         </p>
         <Link href="/login" className="mt-6 inline-block text-[13px] font-medium text-brand hover:underline">
-          Back to sign in
+          Back to log in
         </Link>
       </div>
     );
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
       <p className="mt-6 text-center text-[13px] text-ink-3">
         Remembered it?{" "}
         <Link href="/login" className="font-medium text-brand hover:underline">
-          Back to sign in
+          Back to log in
         </Link>
       </p>
     </div>

@@ -79,11 +79,11 @@ function ResetPasswordForm() {
         </div>
         <h1 className="mt-4 font-display text-[22px] font-bold text-ink">Password reset</h1>
         <p className="mt-2 text-[13.5px] text-ink-3">
-          Your password has been changed. All of your existing sessions have been signed out — sign in again with your
+          Your password has been changed. All of your existing sessions have been signed out — log in again with your
           new password.
         </p>
         <Button className="mt-6 w-full" size="lg" onClick={() => router.replace("/login")}>
-          Go to sign in
+          Go to log in
           <ArrowRight className="size-4" />
         </Button>
       </div>

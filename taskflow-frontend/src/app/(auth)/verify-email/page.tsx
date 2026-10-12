@@ -95,7 +95,7 @@ export default function VerifyEmailPage() {
 
     const currentUser = firebaseAuth.currentUser;
     if (!currentUser) {
-      setError("Sign in first to request a new verification link.");
+      setError("Log in first to request a new verification link.");
       return;
     }
 
@@ -116,7 +116,7 @@ export default function VerifyEmailPage() {
     try {
       const currentUser = firebaseAuth.currentUser;
       if (!currentUser) {
-        setError("No Firebase session was found in this browser. Sign in after verifying your email.");
+        setError("No Firebase session was found in this browser. Log in after verifying your email.");
         return;
       }
 
@@ -163,7 +163,7 @@ export default function VerifyEmailPage() {
       <p className="mt-2 text-center text-[13.5px] text-ink-3">
         {email
           ? <>We sent a verification link to <span className="font-medium text-ink">{email}</span>. Open that link, then return here.</>
-          : "Open the Firebase verification link from your email. If you verified on another device, sign in to TaskFlow afterward."}
+          : "Open the Firebase verification link from your email. If you verified on another device, log in to TaskFlow afterward."}
       </p>
 
       {error && (
@@ -214,7 +214,7 @@ export default function VerifyEmailPage() {
       <p className="mt-6 text-center text-[13px] text-ink-3">
         Already verified?{" "}
         <Link href="/login" className="font-medium text-brand hover:underline">
-          Sign in
+          Log in
         </Link>
       </p>
     </div>

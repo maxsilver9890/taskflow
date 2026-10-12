@@ -156,7 +156,7 @@ function RegisterForm() {
       <p className="mt-6 text-center text-[13px] text-ink-3">
         Already have an account?{" "}
         <Link href={loginHref} className="font-medium text-brand hover:underline">
-          Sign in
+          Log in
         </Link>
       </p>
     </div>
