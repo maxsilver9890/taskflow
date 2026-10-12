@@ -95,7 +95,7 @@ The API also provides legacy POST /auth/register, POST /auth/verify-registration
 
 TaskFlow access tokens are JWTs with an active organization and role. Their default lifetime is 15 minutes. Refresh tokens are stored as SHA-256 hashes, rotate on refresh, and default to a seven-day lifetime. The frontend stores TaskFlow tokens in browser local storage and attaches the access token as a Bearer token. The API is authoritative for authentication and authorization; frontend role checks only control presentation.
 
-Other implemented account endpoints include password reset, email verification and resend for API-managed accounts, logout, and organization selection. API-generated verification codes expire after 10 minutes, allow five failed attempts, and have a 60-second resend cooldown. The authentication router applies a limit of 10 requests per minute per IP. Password hashing requires bcrypt cost factor 12 or higher. Authenticated product routes require verified email.
+Other implemented account endpoints include password reset, email verification and resend for API-managed accounts, logout, and organization selection. Forgot Password responds with the same message whether or not an account exists; for an existing account it queues a reset link to the configured frontend. Resetting the password consumes the link and revokes the user's refresh tokens, so they must sign in again. API-generated verification codes expire after 10 minutes, allow five failed attempts, and have a 60-second resend cooldown. The authentication router applies a limit of 10 requests per minute per IP. Password hashing requires bcrypt cost factor 12 or higher. Authenticated product routes require verified email.
 
 ### Organizations and roles
 
@@ -109,7 +109,7 @@ Admins can change member roles, remove members, transfer admin, cancel invitatio
 
 Projects belong to an organization. Tasks belong to projects and include title, description, status, priority, optional due date, and timestamps. Task statuses are To do, In progress, Review, and Done; priorities are Low, Medium, High, and Urgent. Task lists support project, status, priority, assignee, due-date, and overdue filtering plus pagination.
 
-Tasks can be assigned to organization members. Assignment records are persisted before email delivery is attempted. Comments belong to a task and an author; the API allows listing and creation, author edits, and deletion by the author or an organization admin. Project deletion is admin-only.
+Tasks can be assigned to organization members. Assignment records are persisted before email delivery is attempted. Comments belong to a task and an author. Members may edit and delete their own comments. Organization admins may delete their own comments and comments by members, but cannot moderate comments by another admin. Deletion is a soft delete: the comment body is cleared and the thread shows “Message deleted by [name]”; deleted comments cannot be edited or deleted again. Project deletion is admin-only.
 
 ### Notifications and email jobs
 
@@ -179,9 +179,9 @@ Edit taskflow-backend/.env with local-only values. The example is set up for a h
 | FRONTEND_URL | http://localhost:3000 in code | Frontend base URL used in email links; set explicitly for local and hosted environments. |
 | EMAIL_PROVIDER | console | console for local email output or resend for external delivery. |
 | RESEND_API_KEY, RESEND_FROM_ADDRESS | Required for Resend | Backend-only API key and verified sender address. |
-| FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY | Required for Firebase exchange | Firebase Admin service-account fields used to verify ID tokens. The private key is a backend secret; escaped newline sequences are converted by the code. |
+| FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY | Required for Firebase exchange | Firebase Admin service-account fields used to verify ID tokens. The private key is a backend secret; store it with escaped newline sequences, which the code converts to real line breaks. |
 
-The [backend .env.example](taskflow-backend/.env.example) documents core database, Redis host/port, JWT, port, frontend URL, and email provider settings. It does not include Firebase Admin or every optional variable; use the table above as the additional reference.
+The [backend .env.example](taskflow-backend/.env.example) includes placeholders for Firebase Admin credentials and optional Resend settings alongside core database, Redis, JWT, and application settings. Replace placeholders with credentials from a development Firebase project; never commit a populated `.env` file or service-account private key.
 
 ### 3. Start local PostgreSQL and Redis
 
@@ -215,7 +215,7 @@ Set-Location taskflow-frontend
 if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local } else { Write-Output 'Existing .env.local left unchanged.' }
 ```
 
-The [frontend .env.example](taskflow-frontend/.env.example) provides API, demo, and worker-status variables. It does not list the Firebase web settings used by the app; add these locally as well. Set NEXT_PUBLIC_API_URL=http://localhost:3000. Create a Firebase web app and enable Email/Password sign-in in Firebase Authentication. Add localhost to Firebase Auth authorized domains if needed. Add the web app's public configuration to .env.local:
+The [frontend .env.example](taskflow-frontend/.env.example) provides API, Firebase web, demo, and worker-status placeholders. Set NEXT_PUBLIC_API_URL=http://localhost:3000. Create a Firebase web app and enable Email/Password sign-in in Firebase Authentication. Add localhost to Firebase Auth authorized domains if needed. Replace the Firebase placeholders with that web app's public configuration in `.env.local`:
 
 | Variable | Purpose |
 | --- | --- |
