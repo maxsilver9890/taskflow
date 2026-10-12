@@ -328,47 +328,47 @@ export default function MarketingPage() {
         <div className="stage__inner">
           <div className="frame__photo architecture__visual" aria-hidden="true">
             <svg className="architecture__connectors" viewBox="0 0 1200 360" preserveAspectRatio="none">
-              <path className="architecture__line" d="M110 120 H960 V270 H760" />
-              <path className="architecture__line" d="M960 120 V270 H1040" />
-              <path className="architecture__signal" pathLength="1" d="M110 120 H960" />
-              <path className="architecture__signal" pathLength="1" d="M960 120 V270 H760" />
-              <path className="architecture__signal" pathLength="1" d="M960 120 V270 H1040" />
+              <path className="architecture__line" d="M156 90 H1024 V270 H763" />
+              <path className="architecture__line" d="M763 270 H1068" />
+              <path className="architecture__signal" pathLength="1" d="M156 90 H1024" />
+              <path className="architecture__signal" pathLength="1" d="M1024 90 V270 H763" />
+              <path className="architecture__signal" pathLength="1" d="M763 270 H1068" />
             </svg>
             <div className="architecture__nodes">
               <div className="architecture__node">
-                <span className="architecture__label mono">Action</span>
-                <strong>Team workspace</strong>
-                <span>Create, assign, and discuss work</span>
+                <span className="architecture__label mono">Web</span>
+                <strong>Next.js app</strong>
+                <span>Projects, tasks, and team workspace</span>
               </div>
               <div className="architecture__node">
-                <span className="architecture__label mono">Core</span>
+                <span className="architecture__label mono">Identity</span>
+                <strong>Firebase Auth</strong>
+                <span>Email/password sign-in and verification</span>
+              </div>
+              <div className="architecture__node">
+                <span className="architecture__label mono">API</span>
                 <strong>TaskFlow API</strong>
-                <span>Sessions + organization roles</span>
+                <span>Verifies Firebase identity and enforces org roles</span>
               </div>
               <div className="architecture__node">
                 <span className="architecture__label mono">Data</span>
-                <strong>PostgreSQL</strong>
-                <span>Projects, tasks, comments, notifications</span>
+                <strong>Prisma + PostgreSQL</strong>
+                <span>Organization-scoped work and notifications</span>
               </div>
               <div className="architecture__node">
                 <span className="architecture__label mono">Queue</span>
-                <strong>Background job</strong>
-                <span>Assignment, invite, or account email</span>
+                <strong>Redis + BullMQ</strong>
+                <span>Assignment, invite, and account emails</span>
               </div>
-              <div className="architecture__node">
+              <div className="architecture__node architecture__node--branch">
                 <span className="architecture__label mono">Worker</span>
                 <strong>Email worker</strong>
-                <span>Processes queued delivery jobs</span>
+                <span>Processes queued jobs</span>
               </div>
               <div className="architecture__node architecture__node--branch">
                 <span className="architecture__label mono">Delivery</span>
-                <strong>Email provider</strong>
-                <span>Console locally or Resend</span>
-              </div>
-              <div className="architecture__node architecture__node--branch">
-                <span className="architecture__label mono">Recovery</span>
-                <strong>Retry + dead letter</strong>
-                <span>Failed jobs remain inspectable</span>
+                <strong>Provider + recovery</strong>
+                <span>Resend or console · retries · dead letter</span>
               </div>
             </div>
           </div>
@@ -383,8 +383,9 @@ export default function MarketingPage() {
               </span>
             </h2>
             <p className="frame__lede" data-rev>
-              Organization-scoped actions are saved first. Email work then runs through a queue with retries and
-              inspectable failures; in-app notifications remain available in the workspace.
+              Firebase sign-in is exchanged for a TaskFlow session; legacy API registration also supports email OTP.
+              The API enforces organization access and stores work through Prisma. In-app notifications are persisted,
+              while supported email flows run through a Redis queue and worker with retry and dead-letter handling.
             </p>
           </div>
         </div>
@@ -577,7 +578,23 @@ export default function MarketingPage() {
               Runtime
             </span>
             <span className="value mono" data-rev>
-              Node.js 22+ · TypeScript · Express 5
+              Node.js 22+ · Node 24 CI/container
+            </span>
+          </div>
+          <div className="stack__row">
+            <span className="label" data-rev style={{ "--d": "20ms" } as React.CSSProperties}>
+              Frontend
+            </span>
+            <span className="value mono" data-rev style={{ "--d": "20ms" } as React.CSSProperties}>
+              Next.js 16 · React 19 · TypeScript 5.9
+            </span>
+          </div>
+          <div className="stack__row">
+            <span className="label" data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
+              API
+            </span>
+            <span className="value mono" data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
+              Express 5 · TypeScript 5.9 · Zod · Helmet · rate limiting · Pino
             </span>
           </div>
           <div className="stack__row">
@@ -585,7 +602,7 @@ export default function MarketingPage() {
               Database
             </span>
             <span className="value mono" data-rev style={{ "--d": "40ms" } as React.CSSProperties}>
-              PostgreSQL 17 via Prisma
+              PostgreSQL 17 · Prisma 6
             </span>
           </div>
           <div className="stack__row">
@@ -593,31 +610,55 @@ export default function MarketingPage() {
               Queue
             </span>
             <span className="value mono" data-rev style={{ "--d": "80ms" } as React.CSSProperties}>
-              Redis + BullMQ · 3 attempts · 1s / 2s / 4s
+              Redis 8 · BullMQ · ioredis
             </span>
           </div>
           <div className="stack__row">
             <span className="label" data-rev style={{ "--d": "120ms" } as React.CSSProperties}>
-              Auth
+              UI &amp; state
             </span>
             <span className="value mono" data-rev style={{ "--d": "120ms" } as React.CSSProperties}>
-              JWT access + rotating refresh tokens
+              Tailwind CSS 4 · TanStack Query 5 · Radix UI · dnd-kit
+            </span>
+          </div>
+          <div className="stack__row">
+            <span className="label" data-rev style={{ "--d": "120ms" } as React.CSSProperties}>
+              Identity &amp; sessions
+            </span>
+            <span className="value mono" data-rev style={{ "--d": "120ms" } as React.CSSProperties}>
+              Firebase Auth/Admin · JWT access + rotating refresh · bcrypt · email OTP
             </span>
           </div>
           <div className="stack__row">
             <span className="label" data-rev style={{ "--d": "160ms" } as React.CSSProperties}>
-              Testing
+              Email jobs
             </span>
             <span className="value mono" data-rev style={{ "--d": "160ms" } as React.CSSProperties}>
-              Vitest · Supertest · CI on every push
+              Resend or console · up to 3 attempts · exponential backoff + DLQ
+            </span>
+          </div>
+          <div className="stack__row">
+            <span className="label" data-rev style={{ "--d": "180ms" } as React.CSSProperties}>
+              Quality
+            </span>
+            <span className="value mono" data-rev style={{ "--d": "180ms" } as React.CSSProperties}>
+              Vitest · Supertest · Playwright · ESLint · GitHub Actions (push + PR)
+            </span>
+          </div>
+          <div className="stack__row">
+            <span className="label" data-rev style={{ "--d": "190ms" } as React.CSSProperties}>
+              Hosting
+            </span>
+            <span className="value mono" data-rev style={{ "--d": "190ms" } as React.CSSProperties}>
+              Vercel frontend · Render backend · Supabase PostgreSQL
             </span>
           </div>
           <div className="stack__row">
             <span className="label" data-rev style={{ "--d": "200ms" } as React.CSSProperties}>
-              Deploy
+              Local infrastructure
             </span>
             <span className="value mono" data-rev style={{ "--d": "200ms" } as React.CSSProperties}>
-              Docker Compose · GitHub Actions
+              Docker Compose · PostgreSQL 17 · Redis 8.10
             </span>
           </div>
         </div>
