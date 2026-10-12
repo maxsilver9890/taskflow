@@ -787,7 +787,6 @@ export default function MarketingPage() {
           </span>
           <div className="footer__links">
             <a href="https://github.com/maxsilver9890/taskflow">GitHub</a>
-            <a href="https://taskflow-backend-api-7iwy.onrender.com/api-docs">API docs</a>
             <a href="#stage1">Back to top</a>
           </div>
         </div>
