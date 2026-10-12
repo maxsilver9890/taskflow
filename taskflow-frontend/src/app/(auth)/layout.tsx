@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const { status, emailVerified } = useAuth();
@@ -22,7 +23,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   // or even the page itself — ever had a chance to render.
   useEffect(() => {
     if (status !== "authenticated" || pathname === "/verify-email") return;
-    router.replace(emailVerified ? "/dashboard" : "/verify-email");
+    const queryNext = new URLSearchParams(window.location.search).get("next");
+    const next = safeNextPath(queryNext) ?? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY));
+    if (emailVerified) {
+      sessionStorage.removeItem(PENDING_AUTH_NEXT_KEY);
+      router.replace(next ?? "/dashboard");
+    } else {
+      router.replace(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
+    }
   }, [status, emailVerified, pathname, router]);
 
   const redirecting = status === "authenticated" && pathname !== "/verify-email";

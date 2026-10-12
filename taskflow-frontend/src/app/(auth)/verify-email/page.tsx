@@ -4,11 +4,13 @@ import { AlertCircle, ArrowRight, CheckCircle2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, sendEmailVerification, type User } from "firebase/auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/lib/api/errors";
 import { firebaseAuth } from "@/lib/firebase";
+import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   exchangeFirebaseUser,
   pendingRegistrationFromStorage,
@@ -17,6 +19,7 @@ import {
 
 export default function VerifyEmailPage() {
   const router = useRouter();
+  const { status: authStatus, user: sessionUser, emailVerified: sessionVerified, verifyEmail, resendVerification } = useAuth();
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
@@ -24,6 +27,29 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
+  const [otp, setOtp] = useState("");
+
+  function returnPath() {
+    const queryNext = new URLSearchParams(window.location.search).get("next");
+    const next = safeNextPath(queryNext) ?? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY));
+    sessionStorage.removeItem(PENDING_AUTH_NEXT_KEY);
+    return next ?? "/dashboard";
+  }
+
+  async function verifyOtp(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setChecking(true);
+    try {
+      await verifyEmail(otp.trim());
+      setVerified(true);
+      router.replace(returnPath());
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -31,7 +57,7 @@ export default function VerifyEmailPage() {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
       if (!active) return;
       setFirebaseUser(user);
-      setEmail(user?.email ?? pendingRegistrationFromStorage()?.email ?? null);
+      setEmail(user?.email ?? sessionUser?.email ?? pendingRegistrationFromStorage()?.email ?? null);
 
       if (!user) {
         setChecking(false);
@@ -47,7 +73,7 @@ export default function VerifyEmailPage() {
           await exchangeFirebaseUser(user, pendingRegistrationFromStorage());
           if (!active) return;
           setVerified(true);
-          router.replace("/dashboard");
+          router.replace(returnPath());
           return;
         }
       } catch (err) {
@@ -61,7 +87,7 @@ export default function VerifyEmailPage() {
       active = false;
       unsubscribe();
     };
-  }, [router]);
+  }, [router, sessionUser?.email]);
 
   async function resendVerificationLink() {
     setError(null);
@@ -102,7 +128,7 @@ export default function VerifyEmailPage() {
 
       await exchangeFirebaseUser(currentUser, pendingRegistrationFromStorage());
       setVerified(true);
-      router.replace("/dashboard");
+      router.replace(returnPath());
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -152,9 +178,24 @@ export default function VerifyEmailPage() {
       )}
 
       <div className="mt-6 space-y-3">
-        <Button type="button" className="w-full" size="lg" onClick={() => void checkVerificationStatus()}>
-          I&apos;ve verified my email <ArrowRight className="size-4" />
-        </Button>
+        {authStatus === "authenticated" && !sessionVerified && (
+          <form onSubmit={verifyOtp} className="space-y-3">
+            <label htmlFor="verification-otp" className="block text-sm font-medium text-ink">Email verification code</label>
+            <input id="verification-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))} className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-ink" placeholder="6-digit code" />
+            <Button type="submit" className="w-full" size="lg" loading={checking} disabled={otp.length !== 6}>Verify code</Button>
+            <Button type="button" variant="secondary" className="w-full" loading={sending} onClick={async () => {
+              setSending(true);
+              try { await resendVerification(); setNotice("A new verification code has been sent."); }
+              catch (err) { setError(errorMessage(err)); }
+              finally { setSending(false); }
+            }}>Resend verification code</Button>
+          </form>
+        )}
+        {!(authStatus === "authenticated" && !sessionVerified) && (
+          <Button type="button" className="w-full" size="lg" onClick={() => void checkVerificationStatus()}>
+            I&apos;ve verified my email <ArrowRight className="size-4" />
+          </Button>
+        )}
 
         {firebaseUser && !firebaseUser.emailVerified && (
           <Button

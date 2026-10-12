@@ -3,13 +3,25 @@ import { Router } from "express";
 import { authenticate, requireVerifiedEmail } from "../middleware/authenticate.js";
 import {
   getMyOrganizationHandler,
-  listMyOrganizationMembersHandler
-  ,inviteMemberHandler,listInvitationsHandler,cancelInvitationHandler,acceptInvitationHandler,updateMemberRoleHandler,removeMemberHandler
-  ,createOrganizationHandler,leaveOrganizationHandler,transferAdminHandler,deleteOrganizationHandler
+  listMyOrganizationMembersHandler,
+  inviteMemberHandler,
+  listInvitationsHandler,
+  cancelInvitationHandler,
+  acceptInvitationHandler,
+  rejectInvitationHandler,
+  updateMemberRoleHandler,
+  removeMemberHandler,
+  createOrganizationHandler,
+  leaveOrganizationHandler,
+  transferAdminHandler,
+  deleteOrganizationHandler,
+  getPublicInvitationHandler
 } from "./organization.controller.js";
 
 export function createOrganizationRouter(): Router {
   const router = Router();
+
+  router.get("/invitations/:token", getPublicInvitationHandler);
 
   router.use(authenticate, requireVerifiedEmail);
   router.post("/", createOrganizationHandler);
@@ -27,6 +39,7 @@ export function createOrganizationRouter(): Router {
   router.patch("/me/members/:userId", updateMemberRoleHandler);
   router.delete("/me/members/:userId", removeMemberHandler);
   router.post("/invitations/accept", acceptInvitationHandler);
+  router.post("/invitations/:token/reject", rejectInvitationHandler);
   router.post("/invitations/:token/accept", acceptInvitationHandler);
 
   return router;

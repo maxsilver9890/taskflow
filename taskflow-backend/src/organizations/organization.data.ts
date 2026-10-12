@@ -10,7 +10,7 @@ export async function findOrganizationMembers(db: PrismaClient, organizationId: 
   return db.orgMember.findMany({ where: { organizationId }, orderBy: { createdAt: "asc" }, include: { user: { select: { id: true, name: true, email: true } } } });
 }
 export async function findPendingInvitation(db: PrismaClient, organizationId: string, email: string) {
-  return db.organizationInvitation.findFirst({ where: { organizationId, email, acceptedAt: null, cancelledAt: null, expiresAt: { gt: new Date() } } });
+  return db.organizationInvitation.findFirst({ where: { organizationId, email, acceptedAt: null, cancelledAt: null, rejectedAt: null, expiresAt: { gt: new Date() } } });
 }
 export async function createInvitation(db: PrismaClient, data: { organizationId: string; inviterId: string; email: string; role: "ORG_ADMIN" | "MEMBER"; tokenHash: string; expiresAt: Date }) {
   return db.organizationInvitation.create({ data });
@@ -21,9 +21,37 @@ export async function listInvitations(db: PrismaClient, organizationId: string) 
 export async function findInvitationByHash(db: PrismaClient, tokenHash: string) {
   return db.organizationInvitation.findUnique({ where: { tokenHash }, include: { organization: true } });
 }
-export async function cancelInvitation(db: PrismaClient, organizationId: string, id: string) {
-  return db.organizationInvitation.updateMany({ where: { id, organizationId, acceptedAt: null, cancelledAt: null }, data: { cancelledAt: new Date() } });
+export async function findPublicInvitationByHash(db: PrismaClient, tokenHash: string) {
+  return db.organizationInvitation.findUnique({
+    where: { tokenHash },
+    select: {
+      email: true,
+      role: true,
+      expiresAt: true,
+      acceptedAt: true,
+      cancelledAt: true,
+      rejectedAt: true,
+      organization: { select: { name: true } },
+    },
+  });
 }
+export async function cancelInvitation(db: PrismaClient, organizationId: string, id: string) {
+  return db.organizationInvitation.updateMany({ where: { id, organizationId, acceptedAt: null, cancelledAt: null, rejectedAt: null }, data: { cancelledAt: new Date() } });
+}
+
+export async function rejectInvitation(db: PrismaClient, id: string, now: Date) {
+  return db.organizationInvitation.updateMany({
+    where: {
+      id,
+      acceptedAt: null,
+      cancelledAt: null,
+      rejectedAt: null,
+      expiresAt: { gt: now },
+    },
+    data: { rejectedAt: now },
+  });
+}
+
 export async function findMember(db: PrismaClient, organizationId: string, userId: string) {
   return db.orgMember.findUnique({ where: { organizationId_userId: { organizationId, userId } } });
 }

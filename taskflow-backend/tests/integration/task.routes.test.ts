@@ -12,14 +12,16 @@ import request from "supertest";
 
 import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
+import { createTestEmailCapture } from "../helpers/email-capture.js";
 
 function makeRedisStub() {
   return {
     status: "ready",
     ping: async () => "PONG",
-    quit: async () => {}
+    quit: async () => { }
   } as unknown as import("ioredis").default;
 }
+let emailCapture: ReturnType<typeof createTestEmailCapture>;
 
 async function resetTestDatabase() {
   await prisma.$executeRawUnsafe(`
@@ -29,6 +31,9 @@ async function resetTestDatabase() {
       "tasks",
       "projects",
       "refresh_tokens",
+      "email_verification_otps",
+      "password_reset_tokens",
+      "pending_registrations",
       "org_members",
       "organizations",
       "users"
@@ -42,22 +47,8 @@ async function getVerifiedToken(
   password: string,
   userId: string
 ): Promise<string> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { emailVerified: true }
-  });
-
-  const login = await request(app)
-    .post("/auth/login")
-    .send({ email, password });
-
-  if (login.status !== 200) {
-    throw new Error(
-      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
-    );
-  }
-
-  return login.body.accessToken as string;
+  void app; void password; void userId;
+  return emailCapture.accessToken(email);
 }
 
 describe("Task API integration tests", () => {
@@ -69,14 +60,13 @@ describe("Task API integration tests", () => {
 
   beforeAll(() => {
     app = createApp(makeRedisStub());
+    emailCapture = createTestEmailCapture();
   });
 
   beforeEach(async () => {
     await resetTestDatabase();
 
-    const register = await request(app)
-      .post("/auth/register")
-      .send({
+    const register = await emailCapture.registerAndVerify(app, {
         email: "task-test@example.com",
         name: "Task Test User",
         password: "Password123!",
@@ -288,9 +278,7 @@ describe("Task API integration tests", () => {
 
     expect(tenantATask.status).toBe(201);
 
-    const tenantB = await request(app)
-      .post("/auth/register")
-      .send({
+    const tenantB = await emailCapture.registerAndVerify(app, {
         email: "tenant-b-task@example.com",
         name: "Tenant B User",
         password: "Password123!",

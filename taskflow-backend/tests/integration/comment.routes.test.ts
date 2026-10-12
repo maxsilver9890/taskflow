@@ -12,14 +12,16 @@ import request from "supertest";
 
 import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
+import { createTestEmailCapture } from "../helpers/email-capture.js";
 
 function makeRedisStub() {
   return {
     status: "ready",
     ping: async () => "PONG",
-    quit: async () => {}
+    quit: async () => { }
   } as unknown as import("ioredis").default;
 }
+let emailCapture: ReturnType<typeof createTestEmailCapture>;
 
 async function resetTestDatabase() {
   await prisma.$executeRawUnsafe(`
@@ -29,6 +31,9 @@ async function resetTestDatabase() {
       "tasks",
       "projects",
       "refresh_tokens",
+      "email_verification_otps",
+      "password_reset_tokens",
+      "pending_registrations",
       "org_members",
       "organizations",
       "users"
@@ -42,22 +47,8 @@ async function getVerifiedToken(
   password: string,
   userId: string
 ): Promise<string> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { emailVerified: true }
-  });
-
-  const login = await request(app)
-    .post("/auth/login")
-    .send({ email, password });
-
-  if (login.status !== 200) {
-    throw new Error(
-      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
-    );
-  }
-
-  return login.body.accessToken as string;
+  void app; void password; void userId;
+  return emailCapture.accessToken(email);
 }
 
 describe("Comment API integration tests", () => {
@@ -67,6 +58,7 @@ describe("Comment API integration tests", () => {
 
   beforeAll(() => {
     app = createApp(makeRedisStub());
+    emailCapture = createTestEmailCapture();
   });
 
   beforeEach(async () => {
@@ -75,15 +67,12 @@ describe("Comment API integration tests", () => {
     const email = "comment-test@example.com";
     const password = "Password123!";
 
-    const register = await request(app)
-      .post("/auth/register")
-      .send({
+    const register = await emailCapture.registerAndVerify(app, {
         email,
         name: "Comment Test User",
         password,
         organizationName: "Comment Test Organization"
       });
-
     expect(register.status).toBe(201);
 
     accessToken = await getVerifiedToken(
@@ -196,9 +185,7 @@ describe("Comment API integration tests", () => {
     const email = "other-org@example.com";
     const password = "Password123!";
 
-    const otherOrg = await request(app)
-      .post("/auth/register")
-      .send({
+    const otherOrg = await emailCapture.registerAndVerify(app, {
         email,
         name: "Other Org Admin",
         password,

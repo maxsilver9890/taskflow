@@ -25,3 +25,18 @@ export function markAllRead(db: PrismaClient, userId: string) {
     data: { readAt: new Date() }
   });
 }
+
+
+export function createNotification(
+  db: PrismaClient,
+  data: {
+    userId: string;
+    organizationId: string;
+    organizationName: string;
+    title: string;
+    message: string;
+    link: string;
+  },
+) {
+  return db.notification.create({ data });
+}

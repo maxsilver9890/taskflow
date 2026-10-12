@@ -101,6 +101,7 @@ model OrganizationInvitation {
   expiresAt      DateTime
   acceptedAt     DateTime?
   cancelledAt    DateTime?
+  rejectedAt     DateTime?
   createdAt      DateTime      @default(now())
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   inviter        User          @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Restrict, onUpdate: Cascade)

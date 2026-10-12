@@ -10,6 +10,7 @@ import { Input, Label } from "@/components/ui/Input";
 import { errorMessage } from "@/lib/api/errors";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { DEMO_ACCOUNTS, config } from "@/lib/config";
+import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
 
 export default function LoginPage() {
   return (
@@ -31,7 +32,7 @@ function LoginForm() {
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -41,7 +42,9 @@ function LoginForm() {
 
     try {
       await login({ email: email.trim(), password });
-      router.replace(params.get("next") || "/dashboard");
+      const next = safeNextPath(params.get("next")) ?? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY));
+      sessionStorage.removeItem(PENDING_AUTH_NEXT_KEY);
+      router.replace(next ?? "/dashboard");
     } catch (err) {
       const message = errorMessage(err);
       setError(message);

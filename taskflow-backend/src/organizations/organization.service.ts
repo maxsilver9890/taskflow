@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import type { Queue } from "bullmq";
 import type { EmailJobPayload } from "../jobs/queue.js";
 import { hashToken } from "../lib/jwt.js";
+import * as NotificationData from "../notifications/notification.data.js";
 import type { InviteBody } from "./organization.schemas.js";
 import type { CreateOrganizationBody } from "./organization.schemas.js";
 
@@ -155,17 +156,75 @@ async function requireAdmin(db: PrismaClient, organizationId: string, userId: st
   }
 }
 
-export async function inviteMember(db: PrismaClient, queue: Queue<EmailJobPayload> | undefined, organizationId: string, inviterId: string, inviterRole: string, body: InviteBody) {
+
+export async function inviteMember(
+  db: PrismaClient,
+  queue: Queue<EmailJobPayload> | undefined,
+  organizationId: string,
+  inviterId: string,
+  inviterRole: string,
+  body: InviteBody,
+) {
   await requireAdmin(db, organizationId, inviterId);
-  const member = await db.user.findUnique({ where: { email: body.email }, select: { id: true, name: true } });
-  if (member && await OrganizationData.findMember(db, organizationId, member.id)) throw new AppError(409, "ALREADY_MEMBER", "User is already a member.");
-  if (await OrganizationData.findPendingInvitation(db, organizationId, body.email)) throw new AppError(409, "INVITATION_EXISTS", "An active invitation already exists.");
+
+  const member = await db.user.findUnique({
+    where: { email: body.email },
+    select: { id: true, name: true },
+  });
+
+  if (member && await OrganizationData.findMember(db, organizationId, member.id)) {
+    throw new AppError(409, "ALREADY_MEMBER", "User is already a member.");
+  }
+
+  if (await OrganizationData.findPendingInvitation(db, organizationId, body.email)) {
+    throw new AppError(409, "INVITATION_EXISTS", "An active invitation already exists.");
+  }
+
   const rawToken = crypto.randomBytes(32).toString("hex");
-  const invitation = await OrganizationData.createInvitation(db, { organizationId, inviterId, email: body.email, role: body.role, tokenHash: hashToken(rawToken), expiresAt: new Date(Date.now() + INVITATION_TTL_MS) });
+
+  const invitation = await OrganizationData.createInvitation(db, {
+    organizationId,
+    inviterId,
+    email: body.email,
+    role: body.role,
+    tokenHash: hashToken(rawToken),
+    expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+  });
+
   const organization = await OrganizationData.findOrganizationById(db, organizationId);
-  if (queue && organization) await queue.add("organization_invitation", { type: "organization_invitation", data: { invitationId: invitation.id, email: body.email, name: member?.name ?? body.email, organizationName: organization.name, inviteUrl: `${process.env.FRONTEND_URL ?? "http://localhost:3000"}/invitations/${rawToken}` } });
-  return { id: invitation.id, email: invitation.email, role: invitation.role, expiresAt: invitation.expiresAt };
+
+  if (organization && member) {
+    await NotificationData.createNotification(db, {
+      userId: member.id,
+      organizationId,
+      organizationName: organization.name,
+      title: "Organization invitation",
+      message: `You've been invited to join ${organization.name}.`,
+      link: `/invitations/${rawToken}`,
+    });
+  }
+
+  if (queue && organization) {
+    await queue.add("organization_invitation", {
+      type: "organization_invitation",
+      data: {
+        invitationId: invitation.id,
+        email: body.email,
+        name: member?.name ?? body.email,
+        organizationName: organization.name,
+        inviteUrl: new URL(`/invitations/${rawToken}`, process.env.FRONTEND_URL ?? "http://localhost:3000").toString(),
+      },
+    });
+  }
+
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+  };
 }
+
 
 export async function getInvitations(db: PrismaClient, organizationId: string, role: string) {
   await requireAdmin(db, organizationId, role);
@@ -173,6 +232,23 @@ export async function getInvitations(db: PrismaClient, organizationId: string, r
   return {
     data: data.map(({ tokenHash: _tokenHash, ...invitation }) => invitation),
     total: data.length
+  };
+}
+
+export async function getPublicInvitation(db: PrismaClient, token: string) {
+  const invitation = await OrganizationData.findPublicInvitationByHash(db, hashToken(token));
+  if (!invitation) throw new AppError(404, "INVITATION_NOT_FOUND", "Invitation not found.");
+  const now = new Date();
+  const status = invitation.cancelledAt ? "CANCELLED"
+    : invitation.acceptedAt ? "ACCEPTED"
+      : invitation.rejectedAt ? "REJECTED"
+        : invitation.expiresAt <= now ? "EXPIRED" : "PENDING";
+  return {
+    organizationName: invitation.organization.name,
+    email: invitation.email,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+    status,
   };
 }
 
@@ -184,19 +260,72 @@ export async function cancelInvite(db: PrismaClient, organizationId: string, rol
 
 export async function acceptInvitation(db: PrismaClient, userId: string, token: string) {
   const invitation = await OrganizationData.findInvitationByHash(db, hashToken(token));
-  if (!invitation || invitation.cancelledAt || invitation.acceptedAt || invitation.expiresAt <= new Date()) throw new AppError(400, "INVITATION_INVALID", "Invitation is invalid or expired.");
+  if (!invitation || invitation.cancelledAt || invitation.acceptedAt || invitation.rejectedAt || invitation.expiresAt <= new Date()) throw new AppError(400, "INVITATION_INVALID", "Invitation is invalid or expired.");
   const user = await db.user.findUnique({ where: { id: userId }, select: { email: true } });
-  if (!user || user.email !== invitation.email) throw new AppError(403, "INVITATION_EMAIL_MISMATCH", "Invitation was issued for a different email address.");
-  const existingMembership = await OrganizationData.findMember(db, invitation.organizationId, userId);
-  if (existingMembership) {
+  if (!user || user.email.trim().toLowerCase() !== invitation.email.trim().toLowerCase()) throw new AppError(403, "INVITATION_EMAIL_MISMATCH", "Invitation was issued for a different email address.");
+  if (await OrganizationData.findMember(db, invitation.organizationId, userId)) {
     throw new AppError(409, "ALREADY_MEMBER", "User is already a member.");
   }
   await db.$transaction(async (tx) => {
+    const now = new Date();
+    const claimed = await tx.organizationInvitation.updateMany({
+      where: {
+        id: invitation.id,
+        acceptedAt: null,
+        cancelledAt: null,
+        rejectedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { acceptedAt: now },
+    });
+    if (!claimed.count) {
+      throw new AppError(409, "INVITATION_ALREADY_PROCESSED", "This invitation has already been processed.");
+    }
     await tx.orgMember.create({ data: { organizationId: invitation.organizationId, userId, role: invitation.role } });
-    await tx.organizationInvitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date() } });
   });
   return { organizationId: invitation.organizationId, role: invitation.role };
 }
+
+
+export async function rejectInvitation(db: PrismaClient, userId: string, token: string) {
+  const invitation = await OrganizationData.findInvitationByHash(db, hashToken(token));
+
+  if (
+    !invitation ||
+    invitation.cancelledAt ||
+    invitation.acceptedAt ||
+    invitation.rejectedAt ||
+    invitation.expiresAt <= new Date()
+  ) {
+    throw new AppError(400, "INVITATION_INVALID", "Invitation is invalid or expired.");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+
+  if (!user || user.email.trim().toLowerCase() !== invitation.email.trim().toLowerCase()) {
+    throw new AppError(
+      403,
+      "INVITATION_EMAIL_MISMATCH",
+      "Invitation was issued for a different email address.",
+    );
+  }
+
+  const result = await OrganizationData.rejectInvitation(db, invitation.id, new Date());
+
+  if (!result.count) {
+    throw new AppError(
+      409,
+      "INVITATION_ALREADY_PROCESSED",
+      "This invitation has already been processed.",
+    );
+  }
+
+  return { success: true };
+}
+
 
 export async function changeMemberRole(db: PrismaClient, organizationId: string, actorId: string, actorRole: string, userId: string, role: "ORG_ADMIN" | "MEMBER") {
   await requireAdmin(db, organizationId, actorId);

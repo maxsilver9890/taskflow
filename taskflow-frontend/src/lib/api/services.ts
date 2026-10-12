@@ -1,3 +1,4 @@
+
 import { api } from "./client";
 import type {
   AssignmentResult,
@@ -14,6 +15,7 @@ import type {
   OrganizationMembersResponse,
   OrganizationInvitationsResponse,
   OrganizationInvitation,
+  PublicOrganizationInvitation,
   CreateOrganizationInput,
   CreatedOrganization,
   OrganizationMember,
@@ -67,9 +69,7 @@ export const authApi = {
     api<{ message: string }>("/auth/reset-password", { method: "POST", body: input, anonymous: true }),
   selectOrganization: (organizationId: string) =>
     api<SelectOrganizationResponse>("/auth/select-org", { method: "POST", body: { organizationId } }),
-  // Authenticated (not anonymous): both act on the signed-in caller's own
-  // account (req.auth.userId server-side) — there is no email-in-body
-  // variant, which is what keeps these free of email enumeration.
+  // Authenticated: these act on the signed-in caller's account.
   verifyEmail: (input: VerifyEmailInput) =>
     api<VerifyEmailResponse>("/auth/verify-email", { method: "POST", body: input }),
   resendVerification: () =>
@@ -86,6 +86,21 @@ export const organizationsApi = {
   memberships: () => api<OrganizationMembershipsResponse>("/users/me/organizations"),
   invite: (input: InviteOrganizationMemberInput) =>
     api<OrganizationInvitation>("/organizations/me/invitations", { method: "POST", body: input }),
+  getInvitation: (token: string) =>
+    api<PublicOrganizationInvitation>(`/organizations/invitations/${encodeURIComponent(token)}`, { anonymous: true }),
+
+  acceptInvitation: (token: string) =>
+    api<{ organizationId: string; role: OrgRole }>(
+      `/organizations/invitations/${encodeURIComponent(token)}/accept`,
+      { method: "POST" },
+    ),
+
+  rejectInvitation: (token: string) =>
+    api<{ success: boolean }>(
+      `/organizations/invitations/${encodeURIComponent(token)}/reject`,
+      { method: "POST" },
+    ),
+
   updateMemberRole: (userId: string, role: OrgRole) =>
     api<OrganizationMember>(`/organizations/me/members/${encodeURIComponent(userId)}`, {
       method: "PATCH",
@@ -113,7 +128,8 @@ export const notificationsApi = {
 
 export const usersApi = {
   me: () => api<UserProfile>("/users/me"),
-  updateMe: (input: UpdateProfileInput) => api<UserProfile>("/users/me", { method: "PATCH", body: input }),
+  updateMe: (input: UpdateProfileInput) =>
+    api<UserProfile>("/users/me", { method: "PATCH", body: input }),
   changePassword: (input: ChangePasswordInput) =>
     api<{ message: string }>("/users/me/change-password", { method: "POST", body: input }),
 };
@@ -143,7 +159,8 @@ export const projectsApi = {
   list: (page = 1, limit = 20) =>
     api<Paginated<Project>>("/projects", { query: { page, limit } }),
   get: (id: string) => api<Project>(`/projects/${id}`),
-  create: (input: CreateProjectInput) => api<Project>("/projects", { method: "POST", body: input }),
+  create: (input: CreateProjectInput) =>
+    api<Project>("/projects", { method: "POST", body: input }),
   update: (id: string, input: UpdateProjectInput) =>
     api<Project>(`/projects/${id}`, { method: "PATCH", body: input }),
   remove: (id: string) => api<void>(`/projects/${id}`, { method: "DELETE" }),
@@ -156,7 +173,8 @@ export const tasksApi = {
   list: (params: TaskListParams = {}) =>
     api<Paginated<Task>>("/tasks", { query: { ...params } }),
   get: (id: string) => api<TaskWithProject>(`/tasks/${id}`),
-  create: (input: CreateTaskInput) => api<TaskBase>("/tasks", { method: "POST", body: input }),
+  create: (input: CreateTaskInput) =>
+    api<TaskBase>("/tasks", { method: "POST", body: input }),
   update: (id: string, input: UpdateTaskInput) =>
     api<TaskBase>(`/tasks/${id}`, { method: "PATCH", body: input }),
   remove: (id: string) => api<void>(`/tasks/${id}`, { method: "DELETE" }),
@@ -174,7 +192,7 @@ export const jobsApi = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const PAGE_LIMIT = 100; // backend maximum
+const PAGE_LIMIT = 100;
 const MAX_PAGES = 5;
 
 /**

@@ -21,6 +21,7 @@ import {
 import { authApi } from "@/lib/api/services";
 import type { AuthUser, LoginInput, OrgRole, RegisterInput } from "@/lib/api/types";
 import { firebaseAuth } from "@/lib/firebase";
+import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
 import {
   clearSession,
   decodeAccessToken,
@@ -65,10 +66,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const noopSubscribe = () => () => {};
 
 function verificationActionSettings() {
+  const next = typeof window !== "undefined" ? safeNextPath(sessionStorage.getItem(PENDING_AUTH_NEXT_KEY)) : null;
   return {
     // Firebase verifies the address on its hosted action page, then returns
     // the user to this page so TaskFlow can exchange the verified ID token.
-    url: `${window.location.origin}/verify-email`,
+    url: `${window.location.origin}/verify-email${next ? `?next=${encodeURIComponent(next)}` : ""}`,
   };
 }
 

@@ -15,12 +15,13 @@ import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
 import * as AuthService from "../../src/auth/auth.service.js";
 import type { EmailJobPayload } from "../../src/jobs/queue.js";
+import { createTestEmailCapture } from "../helpers/email-capture.js";
 
 function makeRedisStub() {
   return {
     status: "ready",
     ping: async () => "PONG",
-    quit: async () => {}
+    quit: async () => { }
   } as unknown as import("ioredis").default;
 }
 
@@ -46,6 +47,8 @@ async function resetTestDatabase() {
       "projects",
       "password_reset_tokens",
       "refresh_tokens",
+      "email_verification_otps",
+      "pending_registrations",
       "org_members",
       "organizations",
       "users"
@@ -55,9 +58,11 @@ async function resetTestDatabase() {
 
 describe("Password reset integration tests", () => {
   let app: ReturnType<typeof createApp>;
+  let emailCapture: ReturnType<typeof createTestEmailCapture>;
 
   beforeAll(() => {
     app = createApp(makeRedisStub());
+    emailCapture = createTestEmailCapture();
   });
 
   beforeEach(async () => {
@@ -110,9 +115,7 @@ describe("Password reset integration tests", () => {
     const oldPassword = "OriginalPassword123!";
     const newPassword = "BrandNewPassword456!";
 
-    const register = await request(app)
-      .post("/auth/register")
-      .send({
+    const register = await emailCapture.registerAndVerify(app, {
         email,
         name: "Reset Flow User",
         password: oldPassword,
@@ -122,12 +125,6 @@ describe("Password reset integration tests", () => {
     expect(register.status).toBe(201);
 
     const userId = register.body.user.id as string;
-
-    // This test covers password reset for an already verified account.
-    await prisma.user.update({
-      where: { id: userId },
-      data: { emailVerified: true }
-    });
 
     // Obtain a refresh token for the verified account before resetting.
     const verifiedLogin = await request(app)
@@ -143,12 +140,13 @@ describe("Password reset integration tests", () => {
     await AuthService.forgotPassword(prisma, queue, { email });
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].name).toBe("password_reset");
-    expect(calls[0].payload.type).toBe("password_reset");
+    const resetJob = calls[0]!;
+    expect(resetJob.name).toBe("password_reset");
+    expect(resetJob.payload.type).toBe("password_reset");
 
     const resetUrl =
-      calls[0].payload.type === "password_reset"
-        ? calls[0].payload.data.resetUrl
+      resetJob.payload.type === "password_reset"
+        ? resetJob.payload.data.resetUrl
         : "";
 
     const rawToken = new URL(resetUrl).searchParams.get("token");

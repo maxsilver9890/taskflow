@@ -2,17 +2,25 @@
 
 import { AlertCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { FieldError, Input, Label } from "@/components/ui/Input";
 import { ApiError, errorMessage } from "@/lib/api/errors";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { PENDING_AUTH_NEXT_KEY, safeNextPath } from "@/lib/navigation";
 
 export default function RegisterPage() {
+  return <Suspense fallback={null}><RegisterForm /></Suspense>;
+}
+
+function RegisterForm() {
   const { register } = useAuth();
   const router = useRouter();
+  const params = useSearchParams();
+  const next = safeNextPath(params.get("next"));
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
   const [form, setForm] = useState({ name: "", email: "", organizationName: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -57,13 +65,14 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const email = form.email.trim().toLowerCase();
+      if (next) sessionStorage.setItem(PENDING_AUTH_NEXT_KEY, next);
       await register({
         name: form.name.trim(),
         email,
         organizationName: form.organizationName.trim(),
         password: form.password,
       });
-      router.replace("/verify-email");
+      router.replace(next ? `/verify-email?next=${encodeURIComponent(next)}` : "/verify-email");
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fieldErrors).length > 0) {
         setFieldErrors(err.fieldErrors);
@@ -146,7 +155,7 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-[13px] text-ink-3">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-brand hover:underline">
+        <Link href={loginHref} className="font-medium text-brand hover:underline">
           Sign in
         </Link>
       </p>

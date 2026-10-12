@@ -11,12 +11,14 @@ import request from "supertest";
 
 import { prisma } from "../../src/config/prisma.js";
 import { createApp } from "../../src/app.js";
+import { createTestEmailCapture } from "../helpers/email-capture.js";
+let emailCapture: ReturnType<typeof createTestEmailCapture>;
 
 function makeRedisStub() {
   return {
     status: "ready",
     ping: async () => "PONG",
-    quit: async () => {}
+    quit: async () => { }
   } as unknown as import("ioredis").default;
 }
 
@@ -29,6 +31,9 @@ async function resetTestDatabase() {
       "tasks",
       "projects",
       "refresh_tokens",
+      "email_verification_otps",
+      "password_reset_tokens",
+      "pending_registrations",
       "org_members",
       "organizations",
       "users"
@@ -42,26 +47,13 @@ async function getVerifiedToken(
   password: string,
   userId: string
 ): Promise<string> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { emailVerified: true }
-  });
-
-  const login = await request(app)
-    .post("/auth/login")
-    .send({ email, password });
-
-  if (login.status !== 200) {
-    throw new Error(
-      `Expected verified login to return 200, received ${login.status}: ${JSON.stringify(login.body)}`
-    );
-  }
-
-  return login.body.accessToken as string;
+  void app; void password; void userId;
+  return emailCapture.accessToken(email);
 }
 
 describe("Organization API integration tests", () => {
   const app = createApp(makeRedisStub());
+  emailCapture = createTestEmailCapture();
 
   beforeEach(async () => {
     await resetTestDatabase();
@@ -75,9 +67,7 @@ describe("Organization API integration tests", () => {
     const email = "org-admin@example.com";
     const password = "Password123!";
 
-    const register = await request(app)
-      .post("/auth/register")
-      .send({
+    const register = await emailCapture.registerAndVerify(app, {
         email,
         name: "Org Admin",
         password,
@@ -113,9 +103,7 @@ describe("Organization API integration tests", () => {
     const email = "org-admin2@example.com";
     const password = "Password123!";
 
-    const register = await request(app)
-      .post("/auth/register")
-      .send({
+    const register = await emailCapture.registerAndVerify(app, {
         email,
         name: "Org Admin",
         password,
@@ -170,9 +158,7 @@ describe("Organization API integration tests", () => {
     const emailB = "tenant-b@example.com";
     const password = "Password123!";
 
-    const orgA = await request(app)
-      .post("/auth/register")
-      .send({
+    const orgA = await emailCapture.registerAndVerify(app, {
         email: emailA,
         name: "Tenant A Admin",
         password,
@@ -181,9 +167,7 @@ describe("Organization API integration tests", () => {
 
     expect(orgA.status).toBe(201);
 
-    const orgB = await request(app)
-      .post("/auth/register")
-      .send({
+    const orgB = await emailCapture.registerAndVerify(app, {
         email: emailB,
         name: "Tenant B Admin",
         password,

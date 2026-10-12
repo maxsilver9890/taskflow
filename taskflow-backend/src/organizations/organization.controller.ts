@@ -40,6 +40,32 @@ export async function cancelInvitationHandler(req: Request, res: Response, next:
 export async function acceptInvitationHandler(req: Request, res: Response, next: NextFunction) {
   try { const a = auth(req); const token = typeof req.params.token === "string" ? req.params.token : tokenSchema.parse({ body: req.body }).body.token; res.status(200).json(await OrganizationService.acceptInvitation(prisma, a.userId, token)); } catch (e) { next(e); }
 }
+
+export async function getPublicInvitationHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = String(req.params.token);
+    res.status(200).json(await OrganizationService.getPublicInvitation(prisma, token));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectInvitationHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const a = auth(req);
+    const token =
+      typeof req.params.token === "string"
+        ? req.params.token
+        : tokenSchema.parse({ body: req.body }).body.token;
+
+    res
+      .status(200)
+      .json(await OrganizationService.rejectInvitation(prisma, a.userId, token));
+  } catch (e) {
+    next(e);
+  }
+}
+
 export async function updateMemberRoleHandler(req: Request, res: Response, next: NextFunction) {
   try { const a = auth(req); const { body } = roleSchema.parse({ body: req.body }); res.status(200).json(await OrganizationService.changeMemberRole(prisma, a.orgId, a.userId, a.role, String(req.params.userId), body.role)); } catch (e) { next(e); }
 }

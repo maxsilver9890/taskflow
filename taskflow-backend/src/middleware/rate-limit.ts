@@ -19,5 +19,9 @@ export const authRateLimiter = rateLimit({
     details: {}
   },
   // Skip rate limiting in test environment to avoid flaky tests
-  skip: () => process.env["NODE_ENV"] === "test"
+  // skip: () => process.env["NODE_ENV"] === "test"
+  skip: () => (
+    process.env["NODE_ENV"] === "test" ||
+    process.env["VITEST"] === "true"
+  ),
 });

@@ -315,6 +315,14 @@ export interface OrganizationInvitation {
   expiresAt?: string;
 }
 
+export interface PublicOrganizationInvitation {
+  organizationName: string;
+  email: string;
+  role: OrgRole;
+  expiresAt: string;
+  status: "PENDING" | "EXPIRED" | "CANCELLED" | "ACCEPTED" | "REJECTED";
+}
+
 export interface OrganizationInvitationsResponse {
   data: OrganizationInvitation[];
   total: number;

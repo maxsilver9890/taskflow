@@ -10,6 +10,7 @@ import { notificationsApi } from "@/lib/api/services";
 import { qk } from "@/lib/query-keys";
 import { formatDateTime } from "@/lib/utils";
 import type { Notification } from "@/lib/api/types";
+import Link from "next/link";
 
 export default function NotificationsPage() {
   const notifications = useQuery({ queryKey: qk.notifications.all(), queryFn: notificationsApi.list });
@@ -33,7 +34,7 @@ export default function NotificationsPage() {
           <div className="overflow-hidden rounded-xl border border-line bg-surface">
             {entries.map((entry: Notification) => (
               <div key={entry.id} className="border-b border-line px-4 py-3 last:border-0">
-                <p className="font-medium text-ink">{entry.title}</p>
+                <p className="font-medium text-ink">{entry.link ? <Link href={entry.link} className="hover:underline">{entry.title}</Link> : entry.title}</p>
                 <p className="text-[13px] text-ink-2">{entry.message}</p>
                 <p className="mt-1 text-[11px] text-ink-3">{formatDateTime(entry.createdAt)}</p>
               </div>
