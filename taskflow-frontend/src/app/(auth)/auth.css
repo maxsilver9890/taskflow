@@ -40,11 +40,11 @@
 
 .auth-brand__period { color: #75830C; }
 .auth-kicker { margin: 0 0 18px; color: #596700; font-size: 11px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
-.auth-story__content h2 { max-width: 620px; margin: 0; font: 400 clamp(32px, 4vw, 54px)/1.06 "Dela Gothic One", sans-serif; letter-spacing: -.045em; }
-.auth-story__content h2 em { font-style: normal; background: var(--auth-acid); box-shadow: 5px 0 var(--auth-acid), -5px 0 var(--auth-acid); }
+.auth-story__content h2 { max-width: 620px; margin: 0; color: var(--auth-ink); font: 400 clamp(32px, 4vw, 54px)/1.06 "Dela Gothic One", sans-serif; letter-spacing: -.045em; }
+.auth-story__content h2 em { color: var(--auth-ink); font-style: normal; background: var(--auth-acid); box-shadow: 5px 0 var(--auth-acid), -5px 0 var(--auth-acid); }
 .auth-story__lede { max-width: 48ch; margin: 18px 0 0; color: #4D4D43; font-size: 15px; line-height: 1.65; }
 .auth-benefits { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-.auth-benefits span { padding: 7px 10px; border: 1.5px solid var(--auth-ink); background: var(--auth-card); box-shadow: 2px 2px 0 var(--auth-ink); font-size: 11px; font-weight: 600; }
+.auth-benefits span { padding: 7px 10px; border: 1.5px solid var(--auth-ink); background: var(--auth-card); color: var(--auth-ink); box-shadow: 2px 2px 0 var(--auth-ink); font-size: 11px; font-weight: 600; }
 .auth-story__footer { display: flex; justify-content: space-between; gap: 16px; padding-top: 14px; border-top: 1.5px solid rgb(9 9 11 / 24%); color: #55564A; font-size: 11px; }
 
 .auth-preview { min-width: 0; padding: 18px; border: 2px solid var(--auth-ink); background: var(--auth-card); box-shadow: 7px 7px 0 var(--auth-ink); transition: transform .16s ease, box-shadow .16s ease; }
@@ -54,7 +54,7 @@
 .auth-preview__project-state { padding: 5px 7px; border: 1px solid var(--auth-ink); background: var(--auth-acid); color: var(--auth-ink); }
 .auth-preview__project-head { align-items: flex-end; margin-top: 14px; }
 .auth-preview__overline { margin: 0 0 5px; letter-spacing: .06em; text-transform: none; }
-.auth-preview__project-head h3 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.04em; }
+.auth-preview__project-head h3 { margin: 0; color: var(--auth-ink); font-size: 20px; font-weight: 700; letter-spacing: -.04em; }
 .auth-preview__avatars { display: flex; padding-left: 8px; }
 .auth-preview__avatars span { display: grid; width: 30px; height: 30px; place-items: center; margin-left: -8px; border: 1.5px solid var(--auth-ink); border-radius: 50%; background: var(--auth-acid); font-size: 9px; font-weight: 700; }
 .auth-preview__avatars span:nth-child(2) { background: #E3D6B4; }
@@ -70,8 +70,8 @@
 .auth-preview__status { width: 9px; height: 9px; border: 1.5px solid var(--auth-ink); background: var(--auth-card); }
 .auth-preview__status--progress { background: #E3D6B4; }
 .auth-preview__status--done { background: var(--auth-acid); }
-.auth-preview__task-title { overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.auth-preview__badge { padding: 4px 6px; border: 1px solid var(--auth-ink); font-size: 9px; font-weight: 700; white-space: nowrap; }
+.auth-preview__task-title { overflow: hidden; color: var(--auth-ink); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.auth-preview__badge { padding: 4px 6px; border: 1px solid var(--auth-ink); color: var(--auth-ink); font-size: 9px; font-weight: 700; white-space: nowrap; }
 .auth-preview__badge--todo { background: #EFEBD9; }
 .auth-preview__badge--progress { background: #E3D6B4; }
 .auth-preview__badge--done { background: var(--auth-acid); }
