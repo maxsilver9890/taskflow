@@ -384,12 +384,47 @@ A deployment using Vercel for the frontend, Render for the API/worker, and Supab
 1. **Database:** Create the PostgreSQL database and provide its connection string as backend DATABASE_URL. The application also currently requires non-empty POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD variables at startup. Use the database provider's documented connection mode for the long-lived backend and migration runner.
 2. **Redis:** Provide a reachable Redis service. Set REDIS_URL (use rediss:// when the provider requires TLS) or set REDIS_HOST and REDIS_PORT.
 3. **Backend:** Build/deploy from taskflow-backend/ using the Dockerfile or Node scripts. The runtime entry point is npm start / node dist/src/server.js; a standalone worker entry point is available as npm run worker. Configure separate strong JWT_SECRET and JWT_REFRESH_SECRET, Firebase Admin credentials if using Firebase exchange, FRONTEND_URL, and email-provider settings. Set PORT according to the host's assigned port.
-4. **Migrations:** Include all migration files in the release artifact. Before the new application version serves traffic, inspect npx prisma migrate status and run npm run prisma:deploy in the backend release environment with the intended production database URL. Review all pending migrations first; this command applies every pending migration.
+4. **Migrations:** Include all migration files in the release artifact. On Render, use the API service's **Pre-Deploy Command** (available for paid web services, private services, and background workers) with `npm run prisma:deploy`. Render runs this command after the image/build is ready and before the new version starts serving traffic; a failure cancels the deploy and leaves the previous version running. Do not add migrations to the application start command or Docker `CMD`.
 5. **Frontend:** Deploy taskflow-frontend/ as a Next.js application. Set NEXT_PUBLIC_API_URL to the backend's public base URL and supply Firebase web configuration. These variables are compiled into the browser bundle at build time. Ensure backend FRONTEND_URL points to the frontend origin used in invitation and password-reset links.
 6. **Email:** Set EMAIL_PROVIDER=resend, RESEND_API_KEY, and RESEND_FROM_ADDRESS only when the Resend sender is configured and verified. Confirm delivery in the provider's own logs. Do not assume a test sender can send to arbitrary addresses.
 7. **CORS and health:** The API currently uses default cors() middleware without a configured origin allowlist. /health checks Redis only. These behaviors are in application code, not platform settings.
 
 Vercel, Render, and Supabase are deployment options and references in project documentation, not a claim that their dashboards are currently configured. Never use production as the test database. Run migrations through a controlled release step, not through prisma migrate dev, db push, a seed command, or application tests.
+
+### Render production migration runbook
+
+The repository currently has no checked-in Render Blueprint or Render API credentials, so these settings must be confirmed in the Render Dashboard for the actual services. The following is the intended safe configuration:
+
+1. Open the Render **API web service** that deploys `taskflow-backend` from `main`. Confirm its root directory and Dockerfile point at `taskflow-backend/`, and confirm the deployed commit contains the migration directory, including `prisma/migrations/20261012180000_add_comment_soft_deletion/`.
+2. In the API service's **Environment** page, confirm `DATABASE_URL` targets the intended production database. Compare its host/database identity with the production PostgreSQL service's internal connection details. Do not paste the value into logs, tickets, or source control. Also confirm the required `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` values belong to that same database; they are startup validation inputs, while Prisma uses `DATABASE_URL` for the actual connection.
+3. In the API service's **Settings**, set **Pre-Deploy Command** to:
+
+   ```text
+   npm run prisma:deploy
+   ```
+
+   This works with the current Docker image because the image contains `package.json`, the Prisma CLI dependency, `prisma.config.ts`, and `prisma/migrations/`. Leave the Dockerfile `CMD` and the Render **Start Command** as the server start command (`npm start` or the image default). Do not combine migration and server startup with `sh -c`.
+4. Save the setting and trigger a deploy of the intended `main` commit. Review the pre-deploy logs before accepting the result. The expected result is either an `Applying migration ...` line for each pending migration, including `20261012180000_add_comment_soft_deletion`, or a clear `No pending migrations to apply` message. Any connection, target, or migration error must stop the deploy; do not bypass it by starting the API manually.
+5. Configure the separate Render **worker** service, if present, to use the same backend commit/image and the same production `DATABASE_URL` value as the API. Confirm its `REDIS_HOST`/`REDIS_PORT` or `REDIS_URL` points to the intended production Redis. Do not run migrations independently from both API and worker services; only the API pre-deploy step should own schema migration.
+6. Verify the database target and schema from a trusted production database console or an approved, read-only connection before testing application writes. These checks must be run against the verified production target, never against a local, preview, or test database:
+
+   ```sql
+   SELECT column_name, data_type
+   FROM information_schema.columns
+   WHERE table_schema = 'public'
+     AND table_name = 'comments'
+     AND column_name IN ('deletedAt', 'deletedByName')
+   ORDER BY column_name;
+
+   SELECT migration_name, finished_at
+   FROM "_prisma_migrations"
+   WHERE migration_name = '20261012180000_add_comment_soft_deletion';
+   ```
+
+   Both comment columns must be present and the migration row must have a non-null `finished_at` before considering the schema fixed.
+7. After the schema check, exercise the authenticated API/UI paths that previously returned 500: fetch comments, create a comment, edit a task, change task completion/status, and delete a comment. Check the API and worker logs for the same deploy. The incident is not resolved until these operations succeed against the production database.
+
+If the current Render plan does not expose **Pre-Deploy Command**, do not put `prisma migrate deploy` in application startup and do not run it from a Docker image build against an unverified target. Use an approved one-off migration runner or upgrade/temporarily use a Render plan that supports the pre-deploy step, first verifying the exact production `DATABASE_URL`, then run `npm run prisma:deploy` once and inspect its logs. If Render access or the production database connection is unavailable, stop after the repository changes and have the service owner perform steps 1–7.
 
 ## Security notes and operational limits
 
