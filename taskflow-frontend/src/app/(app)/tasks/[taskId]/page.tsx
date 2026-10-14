@@ -82,41 +82,31 @@ export default function TaskDetailPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title={
-          <>
-            <Link
-              href={task ? `/projects/${task.projectId}` : "/tasks"}
-              className="flex size-6 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink"
-            >
-              <ArrowLeft className="size-4" />
-            </Link>
-            {base.isLoading ? <Skeleton className="h-6 w-56" /> : task?.title}
-          </>
-        }
-        actions={
-          task && (
-            <>
-              {task.status !== "DONE" && <Button size="sm" onClick={() => void completeTask()} loading={updateTask.isPending}><Check className="size-3.5" /> Complete task</Button>}
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="size-3.5" /> Edit
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}>
-                <UserPlus className="size-3.5" /> Assign
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </>
-          )
-        }
-      />
+    <div className="tf-task-detail-page">
+      <header className="tf-task-detail-hero">
+        <div className="tf-task-detail-heading">
+          <div className="tf-task-breadcrumb">
+            <Link href="/tasks"><ArrowLeft className="size-4" /> All tasks</Link>
+            <span aria-hidden="true">/</span>
+            {task ? <Link href={`/projects/${task.projectId}`}>{task.project.name}</Link> : <span>Task details</span>}
+          </div>
+          {base.isLoading ? <Skeleton className="h-10 w-64" /> : <h1>{task?.title}</h1>}
+          {task && <div className="tf-task-detail-badges"><StatusBadge status={task.status} /><PriorityBadge priority={task.priority} /></div>}
+        </div>
+        {task && (
+          <div className="tf-task-detail-actions">
+            {task.status !== "DONE" && <Button size="sm" onClick={() => void completeTask()} loading={updateTask.isPending}><Check className="size-3.5" /> Complete task</Button>}
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil className="size-3.5" /> Edit</Button>
+            <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}><UserPlus className="size-3.5" /> Assign</Button>
+            <Button variant="outline" size="icon" aria-label="Delete task" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" /></Button>
+          </div>
+        )}
+      </header>
 
-      <div className="grid grid-cols-1 gap-5 p-4 md:grid-cols-3 md:p-6">
+      <div className="tf-task-detail-layout grid grid-cols-1 gap-5 p-4 md:grid-cols-3 md:p-6">
         <div className="space-y-5 md:col-span-2">
-          <section className="rounded-xl border border-line bg-surface p-4">
-            <h2 className="mb-2 text-[13px] font-semibold text-ink-2">Description</h2>
+          <section className="tf-task-panel tf-task-description rounded-xl border border-line bg-surface p-4">
+            <h2><span>01</span> Description</h2>
             {base.isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-full" />
@@ -129,8 +119,8 @@ export default function TaskDetailPage() {
             )}
           </section>
 
-          <section className="rounded-xl border border-line bg-surface p-4">
-            <h2 className="mb-3 text-[13px] font-semibold text-ink-2">Assignees</h2>
+          <section className="tf-task-panel rounded-xl border border-line bg-surface p-4">
+            <h2><span>02</span> Assignees</h2>
             {siblings.isError ? (
               <ErrorState error={siblings.error} onRetry={siblings.refetch} />
             ) : siblings.isLoading ? (
@@ -140,7 +130,7 @@ export default function TaskDetailPage() {
             ) : (
               <ul className="space-y-2">
                 {enrichedTask!.assignments.map((a) => (
-                  <li key={a.userId} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
+                  <li key={a.userId} className="tf-task-assignee flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
                     <span className="flex min-w-0 items-center gap-2.5">
                       <Avatar name={a.user.name} size="sm" />
                       <span className="min-w-0">
@@ -164,9 +154,9 @@ export default function TaskDetailPage() {
           {task && <CommentsSection taskId={task.id} />}
         </div>
 
-        <div className="space-y-5">
-          <section className="rounded-xl border border-line bg-surface p-4">
-            <h2 className="mb-3 text-[13px] font-semibold text-ink-2">Details</h2>
+        <div className="tf-task-sidebar space-y-5">
+          <section className="tf-task-panel tf-task-metadata rounded-xl border border-line bg-surface p-4">
+            <h2><span>INFO</span> Task details</h2>
             {base.isLoading || !task ? (
               <div className="space-y-3">
                 <Skeleton className="h-5 w-full" />

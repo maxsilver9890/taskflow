@@ -46,7 +46,7 @@ export function TaskFilters({
   const hasFilters = Object.entries(filters).some(([k, v]) => (k === "overdue" ? v : v !== ""));
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3">
+    <div className="tf-task-filters flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3">
       <div className="w-40">
         <Label htmlFor="f-project">Project</Label>
         <Select id="f-project" value={filters.projectId} onChange={(e) => set("projectId", e.target.value)}>

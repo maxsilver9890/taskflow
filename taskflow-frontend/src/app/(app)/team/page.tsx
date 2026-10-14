@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -112,23 +111,30 @@ export default function TeamPage() {
   }
 
   return (
-    <div>
-      <PageHeader title="Team" description={org.data ? `${org.data.name} · ${pluralize(org.data.memberCount, "member")}` : "Everyone in your organization."}
-        actions={isAdmin ? <Button size="sm" onClick={() => setInviteOpen(true)}><UserPlus className="size-4" />Invite member</Button> : undefined} />
-      <div className="p-4 md:p-6">
+    <div className="tf-team-page">
+      <header className="tf-team-head">
+        <div>
+          <span className="tf-projects-eyebrow">People / {org.data?.name ?? "Organization"}</span>
+          <h1>TEAM MEMBERS</h1>
+          <p>{org.data ? pluralize(org.data.memberCount, "member") : "Your organization roster"}</p>
+        </div>
+        {isAdmin && <Button size="md" onClick={() => setInviteOpen(true)}><UserPlus className="size-4" /> Invite member</Button>}
+      </header>
+      <div className="tf-team-content p-4 md:p-6">
+        <div className="tf-team-section-head"><h2>IN THIS ORGANIZATION</h2><span>{String(total).padStart(2, "0")} MEMBERS</span></div>
         {query.isError ? <ErrorState error={query.error} onRetry={() => query.refetch()} /> : isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl border border-line bg-surface p-5"><div className="flex items-center gap-3"><Skeleton className="size-11 rounded-full" /><Skeleton className="h-5 w-36" /></div><Skeleton className="mt-5 h-8 w-28" /></div>)}
+          <div className="tf-team-grid">
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="tf-team-card"><div className="flex items-center gap-3"><Skeleton className="size-11 rounded-full" /><Skeleton className="h-5 w-36" /></div><Skeleton className="mt-5 h-8 w-28" /></div>)}
           </div>
         ) : members.length === 0 ? <EmptyState icon={<Users className="size-5" />} title="No members yet" /> : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="tf-team-grid">
             {members.map((member) => (
-              <article key={member.userId} className="rounded-xl border border-line bg-surface p-5">
+              <article key={member.userId} className={`tf-team-card ${member.isMe ? "is-you" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={member.name} size="lg" />
                     <div className="min-w-0">
-                      <h2 className="truncate text-[15px] font-bold text-ink">{member.name}{member.isMe && <span className="ml-1 font-normal text-ink-3">(you)</span>}</h2>
+                      <h3 className="truncate">{member.name}{member.isMe && <span className="tf-team-you-label">YOU</span>}</h3>
                       <p className="truncate text-[12px] text-ink-3">{member.email}</p>
                     </div>
                   </div>
@@ -138,7 +144,7 @@ export default function TeamPage() {
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3">Workspace role</span>
                     {isAdmin && !member.isMe ? (
-                      <select aria-label={`Role for ${member.name}`} value={member.role} onChange={(event) => changeRole(member.userId, event.target.value as OrgRole, member.role)} disabled={roleMutation.isPending} className="min-h-9 border border-line bg-surface px-2 text-[12px] font-bold uppercase text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                      <select aria-label={`Role for ${member.name}`} value={member.role} onChange={(event) => changeRole(member.userId, event.target.value as OrgRole, member.role)} disabled={roleMutation.isPending} className="tf-team-role-select min-h-9 border border-line bg-surface px-2 text-[12px] font-bold uppercase text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand">
                         <option value="ORG_ADMIN">Org admin</option><option value="MEMBER">Member</option>
                       </select>
                     ) : <Badge className="w-fit bg-brand text-black">{member.role === "ORG_ADMIN" ? "Org admin" : "Member"}</Badge>}
@@ -152,10 +158,10 @@ export default function TeamPage() {
         {total > members.length && <p className="mt-2 text-[12px] text-ink-3">Showing {members.length} of {total} members.</p>}
       </div>
       {isAdmin && pendingInvitations.length > 0 ? (
-        <div className="px-4 pb-4 md:px-6">
-          <div className="rounded-xl border border-line bg-surface">
-            <div className="border-b border-line px-4 py-3">
-              <h2 className="text-[13px] font-semibold text-ink">Pending invitations</h2>
+        <div className="tf-team-invitations px-4 pb-4 md:px-6">
+          <div className="tf-team-invitation-panel">
+            <div className="tf-team-invitation-head">
+              <h2>Pending invitations</h2><span>{String(pendingInvitations.length).padStart(2, "0")}</span>
             </div>
             <div className="divide-y divide-line">
               {pendingInvitations.map((invitation) => (
@@ -181,10 +187,10 @@ export default function TeamPage() {
         </div>
       ) : null}
       {isAdmin && rejectedInvitations.length > 0 ? (
-        <div className="px-4 pb-4 md:px-6">
-          <div className="rounded-xl border border-line bg-surface">
-            <div className="border-b border-line px-4 py-3">
-              <h2 className="text-[13px] font-semibold text-ink">Rejected invitations</h2>
+        <div className="tf-team-invitations px-4 pb-4 md:px-6">
+          <div className="tf-team-invitation-panel">
+            <div className="tf-team-invitation-head">
+              <h2>Rejected invitations</h2><span>{String(rejectedInvitations.length).padStart(2, "0")}</span>
             </div>
             <div className="divide-y divide-line">
               {rejectedInvitations.map((invitation) => (

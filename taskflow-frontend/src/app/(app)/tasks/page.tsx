@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { AssignDialog } from "@/components/tasks/AssignDialog";
 import { TaskFilters, type TaskFilterState } from "@/components/tasks/TaskFilters";
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
@@ -115,17 +114,18 @@ function TasksPageInner() {
 
   return (
     <div>
-      <PageHeader
-        title="All tasks"
-        description="Every task across your organization, with filters."
-        actions={
-          <Button size="sm" onClick={openCreate}>
+      <div className="tf-task-index-page space-y-5 p-4 md:p-6">
+        <section className="tf-task-index-head">
+          <div>
+            <span className="tf-projects-eyebrow">Work queue / Organization</span>
+            <h1>ALL TASKS</h1>
+            <p>{tasksQuery.isLoading ? "Loading tasks…" : `${tasksQuery.data?.total ?? 0} matching tasks`}</p>
+          </div>
+          <Button size="md" onClick={openCreate}>
             <Plus className="size-4" /> New task
           </Button>
-        }
-      />
+        </section>
 
-      <div className="space-y-4 p-4 md:p-6">
         <TaskFilters filters={filters} onChange={updateFilters} projects={allProjects ?? []} members={members} />
 
         {tasksQuery.isError ? (
@@ -152,7 +152,7 @@ function TasksPageInner() {
               loading={tasksQuery.isLoading}
             />
             {!filters.overdue && tasksQuery.data && (
-              <div className="overflow-hidden rounded-xl border border-line bg-surface">
+              <div className="tf-task-pagination">
                 <Pagination page={page} limit={LIMIT} total={tasksQuery.data.total} onPageChange={setPage} />
               </div>
             )}

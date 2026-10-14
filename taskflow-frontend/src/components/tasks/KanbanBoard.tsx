@@ -51,16 +51,16 @@ function Column({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
-    <div className="flex w-[280px] shrink-0 flex-col md:w-full">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <span className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+    <div className="tf-board-column flex w-[280px] shrink-0 flex-col md:w-full" data-status={status}>
+      <div className="tf-board-column-heading">
+        <span className="flex items-center gap-2">
           <span className={cn("size-2 rounded-full", accent)} />
           {label}
-          <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{tasks.length}</span>
+          <span className="tf-board-column-count">{tasks.length}</span>
         </span>
         <button
           onClick={() => onAddTask(status)}
-          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[12px] font-medium text-ink-3 hover:bg-surface-2 hover:text-ink"
+          className="tf-board-add-task flex items-center gap-1 rounded-md px-1.5 py-1 text-[12px] font-medium text-ink-3 hover:bg-surface-2 hover:text-ink"
           aria-label={`Add task to ${label}`}
         >
           <Plus className="size-3.5" /> Add task
@@ -69,7 +69,7 @@ function Column({
       <div
         ref={setNodeRef}
         className={cn(
-          "tf-neo-brutal-lane flex min-h-[120px] flex-1 flex-col gap-2 rounded-xl border border-line bg-surface-2/50 p-2 transition-colors",
+          "tf-neo-brutal-lane tf-board-column-list flex min-h-[120px] flex-1 flex-col gap-3 rounded-xl border border-line bg-surface-2/50 p-2 transition-colors",
           isOver && "border-brand/40 bg-brand-soft/40",
         )}
       >
@@ -163,7 +163,7 @@ export function KanbanBoard({
   return (
     <>
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid auto-cols-[280px] grid-flow-col gap-3 overflow-x-auto pb-2 md:auto-cols-fr md:grid-flow-row md:grid-cols-4 md:overflow-visible">
+        <div className="tf-project-board grid auto-cols-[minmax(260px,82vw)] grid-flow-col gap-4 overflow-x-auto pb-4 md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible xl:grid-cols-4">
           {COLUMNS.map((col) => (
             <Column
               key={col.status}

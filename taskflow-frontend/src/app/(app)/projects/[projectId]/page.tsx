@@ -108,33 +108,31 @@ export default function ProjectDetailPage() {
 
   return (
     <div>
-      <PageHeader
-        title={
-          <>
-            <button onClick={requestProjectBack} aria-label="Back to projects" className="flex size-6 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink">
-              <ArrowLeft className="size-4" />
-            </button>
-            {project.isLoading ? <Skeleton className="h-6 w-48" /> : project.data?.name}
-          </>
-        }
-        description={project.data ? `Created ${formatDueDate(project.data.createdAt)}` : undefined}
-        actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil className="size-3.5" /> Edit
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="size-3.5" />
-            </Button>
-            <Button size="sm" onClick={() => openAddTask("TODO")}>
-              <Plus className="size-4" /> New task
-            </Button>
-          </>
-        }
-      />
+      <header className="tf-project-detail-hero">
+        <div className="tf-project-detail-copy">
+          <button onClick={requestProjectBack} aria-label="Back to projects" className="tf-project-back">
+            <ArrowLeft className="size-4" /> All projects
+          </button>
+          <span className="tf-projects-eyebrow">Workspace / Project board</span>
+          {project.isLoading ? <Skeleton className="h-10 w-64" /> : <h1>{project.data?.name}</h1>}
+          {project.data?.description && <p>{project.data.description}</p>}
+          {project.data && <span className="tf-project-created">Created {formatDueDate(project.data.createdAt)}</span>}
+        </div>
+        <div className="tf-project-detail-actions">
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-3.5" /> Edit project
+          </Button>
+          <Button variant="outline" size="icon" aria-label="Delete project" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="size-4" />
+          </Button>
+          <Button size="sm" onClick={() => openAddTask("TODO")}>
+            <Plus className="size-4" /> New task
+          </Button>
+        </div>
+        <span className="tf-project-detail-code" aria-hidden="true">TF / BOARD</span>
+      </header>
 
-      <div className="space-y-5 p-4 md:p-6">
-        {project.data?.description && <p className="max-w-2xl text-[13.5px] text-ink-2">{project.data.description}</p>}
+      <div className="tf-project-detail-content space-y-6 p-4 md:p-6">
 
         {dashboard.isLoading ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -145,6 +143,14 @@ export default function ProjectDetailPage() {
         ) : dashboard.data ? (
           <DashboardStats dashboard={dashboard.data} />
         ) : null}
+
+        <div className="tf-board-section-head">
+          <div>
+            <span className="tf-projects-eyebrow">Execution view</span>
+            <h2>TASK BOARD</h2>
+          </div>
+          <p>Move tasks between stages to keep the project current.</p>
+        </div>
 
         {tasksQuery.isLoading ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">

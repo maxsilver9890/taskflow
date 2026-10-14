@@ -36,7 +36,7 @@ Zod schemas, not assumed.
   for mutations.
 - **Responsive** — a sidebar + top nav on desktop, a bottom tab bar on
   mobile, and a horizontally-scrollable Kanban board on small screens.
-- **Light/dark theme**, keyboard-accessible dialogs and menus (Radix UI).
+- **Light theme**, keyboard-accessible dialogs and menus (Radix UI).
 
 ## What's intentionally *not* here
 

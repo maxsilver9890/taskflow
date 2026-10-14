@@ -1,9 +1,8 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { FolderKanban, Plus, PlusCircle } from "lucide-react";
 import { useState } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +13,6 @@ import { Pagination } from "@/components/ui/Pagination";
 import { useDeleteProject, useProjects } from "@/hooks/use-projects";
 import type { Project } from "@/lib/api/types";
 import { errorMessage } from "@/lib/api/errors";
-import { FolderKanban } from "lucide-react";
 import { toast } from "sonner";
 
 const LIMIT = 12;
@@ -49,19 +47,19 @@ export default function ProjectsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Projects"
-        description="Every project in your organization."
-        actions={
-          <Button size="sm" onClick={openCreate}>
+      <div className="tf-projects-page space-y-6 p-4 md:p-6">
+        <section className="tf-project-index-head" aria-labelledby="projects-heading">
+          <div>
+            <h1 id="projects-heading">PROJECTS</h1>
+            <p>{isLoading ? "Loading workspace projects…" : isError ? "PROJECTS UNAVAILABLE" : `TOTAL PROJECTS: ${data?.total ?? 0}`}</p>
+          </div>
+          <Button size="md" onClick={openCreate}>
             <Plus className="size-4" /> New project
           </Button>
-        }
-      />
+        </section>
 
-      <div className="p-4 md:p-6">
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="tf-project-grid">
             {Array.from({ length: 6 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -70,15 +68,19 @@ export default function ProjectsPage() {
           <ErrorState error={error} onRetry={refetch} />
         ) : data && data.data.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={`tf-project-grid ${data.data.length === 3 ? "is-three-projects" : ""}`}>
               {data.data.map((project, index) => (
-                <ProjectCard key={project.id} project={project} featured={index === 0} onEdit={openEdit} onDelete={setDeleting} />
+                <ProjectCard key={project.id} project={project} featured={index === 0} dark={index === 1} onEdit={openEdit} onDelete={setDeleting} />
               ))}
+              <button type="button" className="tf-add-project-tile" onClick={openCreate}>
+                <PlusCircle className="size-10" />
+                <span>Add another project</span>
+              </button>
             </div>
-            <div className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">
+            <div className="tf-project-pagination">
               <Pagination page={page} limit={LIMIT} total={data.total} onPageChange={setPage} />
             </div>
-            {isFetching && <p className="mt-2 text-center text-[12px] text-ink-3">Updating…</p>}
+            {isFetching && <p className="text-right text-xs font-bold uppercase tracking-wider text-ink-3">Updating…</p>}
           </>
         ) : (
           <EmptyState

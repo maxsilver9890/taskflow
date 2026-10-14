@@ -97,8 +97,8 @@ export default function ProfilePage() {
   return (
     <div>
       <PageHeader title="Profile" description="Manage your account and organization." />
-      <div className="space-y-5 p-4 md:p-6">
-        <Card id="organizations">
+      <div className="tf-profile-grid p-4 md:p-6">
+        <Card className="tf-profile-card tf-profile-personal">
           <CardHeader><h2 className="text-[15px] font-semibold text-ink">Personal information</h2></CardHeader>
           <CardBody>
             <form onSubmit={saveName} className="max-w-xl space-y-4">
@@ -110,7 +110,7 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card id="organizations" className="tf-profile-card tf-profile-organizations">
           <CardHeader><h2 className="text-[15px] font-semibold text-ink">Organizations</h2></CardHeader>
           <CardBody>
             {memberships.isLoading ? (
@@ -137,7 +137,7 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card className="tf-profile-card tf-profile-danger">
           <CardHeader><h2 className="text-[15px] font-semibold text-danger">Danger zone</h2></CardHeader>
           <CardBody className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="font-medium text-ink">Leave {data.organization.name}</p><p className="text-[13px] text-ink-3">You will lose access to this organization.</p></div>
@@ -158,7 +158,7 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card className="tf-profile-card tf-profile-security">
           <CardHeader><h2 className="text-[15px] font-semibold text-ink">Security</h2></CardHeader>
           <CardBody className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="font-medium text-ink">Password</p><p className="text-[13px] text-ink-3">Change your password while signed in.</p></div>

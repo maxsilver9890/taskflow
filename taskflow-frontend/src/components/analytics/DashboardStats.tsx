@@ -1,13 +1,11 @@
 "use client";
 
 import type { ProjectDashboard } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
-
-const ROWS: { key: keyof ProjectDashboard["counts"]; label: string; color: string; bg: string }[] = [
-  { key: "todo", label: "To do", color: "text-s-todo", bg: "bg-s-todo" },
-  { key: "in_progress", label: "In progress", color: "text-s-progress", bg: "bg-s-progress" },
-  { key: "review", label: "Review", color: "text-s-review", bg: "bg-s-review" },
-  { key: "done", label: "Done", color: "text-s-done", bg: "bg-s-done" },
+const ROWS: { key: keyof ProjectDashboard["counts"]; label: string }[] = [
+  { key: "todo", label: "To do" },
+  { key: "in_progress", label: "In progress" },
+  { key: "review", label: "Review" },
+  { key: "done", label: "Done" },
 ];
 
 export function DashboardStats({ dashboard }: { dashboard: ProjectDashboard }) {
@@ -15,19 +13,22 @@ export function DashboardStats({ dashboard }: { dashboard: ProjectDashboard }) {
   const donePct = total > 0 ? Math.round((dashboard.counts.done / total) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-      <div className="rounded-xl border border-line bg-surface p-4">
-        <p className="text-[11.5px] font-medium text-ink-3">Total tasks</p>
-        <p className="mt-1 font-display text-[24px] font-bold text-ink">{total}</p>
-        <p className="mt-0.5 text-[11.5px] text-ink-3">{donePct}% complete</p>
+    <div className="tf-project-metrics">
+      <div className="tf-project-metric tf-project-metric-total">
+        <p>Project completion</p>
+        <div className="tf-project-metric-main"><strong>{donePct}<small>%</small></strong><span>{total} total tasks</span></div>
+        <div className="tf-project-progress-track" role="progressbar" aria-label="Project completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={donePct}>
+          <span style={{ width: `${donePct}%` }} />
+        </div>
       </div>
       {ROWS.map((row) => (
-        <div key={row.key} className="rounded-xl border border-line bg-surface p-4">
-          <p className={cn("flex items-center gap-1.5 text-[11.5px] font-medium", row.color)}>
-            <span className={cn("size-1.5 rounded-full", row.bg)} />
+        <div key={row.key} className="tf-project-metric">
+          <p className="tf-project-metric-label">
+            <span className={`tf-status-mark is-${row.key.replace("in_progress", "progress")}`} />
             {row.label}
           </p>
-          <p className="mt-1 font-display text-[24px] font-bold text-ink">{dashboard.counts[row.key]}</p>
+          <strong>{dashboard.counts[row.key]}</strong>
+          <span>{total ? `${Math.round((dashboard.counts[row.key] / total) * 100)}% of tasks` : "No tasks yet"}</span>
         </div>
       ))}
     </div>

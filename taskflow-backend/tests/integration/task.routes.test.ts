@@ -202,6 +202,62 @@ describe("Task API integration tests", () => {
     expect(res.body.priority).toBe("URGENT");
   });
 
+  it("moves a task without changing its other fields, assignments, or comments", async () => {
+    const create = await request(app)
+      .post("/tasks")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        projectId,
+        title: "Keep task context",
+        description: "Task details must survive a status move.",
+        status: "TODO",
+        priority: "HIGH"
+      });
+
+    expect(create.status).toBe(201);
+    taskId = create.body.id;
+
+    const taskOwner = await prisma.orgMember.findFirstOrThrow({ where: { organizationId } });
+    await prisma.taskAssignment.create({ data: { taskId, userId: taskOwner.userId } });
+
+    const comment = await request(app)
+      .post(`/tasks/${taskId}/comments`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ content: "Keep this comment after the move." });
+    expect(comment.status).toBe(201);
+
+    const moved = await request(app)
+      .patch(`/tasks/${taskId}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ status: "IN_PROGRESS" });
+    expect(moved.status).toBe(200);
+
+    const refreshed = await request(app)
+      .get(`/tasks?page=1&limit=20&projectId=${projectId}`)
+      .set("Authorization", `Bearer ${accessToken}`);
+    expect(refreshed.status).toBe(200);
+    expect(refreshed.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: taskId,
+        title: "Keep task context",
+        description: "Task details must survive a status move.",
+        status: "IN_PROGRESS",
+        priority: "HIGH",
+        assignments: expect.arrayContaining([
+          expect.objectContaining({ userId: taskOwner.userId })
+        ])
+      })
+    ]));
+
+    const comments = await request(app)
+      .get(`/tasks/${taskId}/comments`)
+      .set("Authorization", `Bearer ${accessToken}`);
+    expect(comments.status).toBe(200);
+    expect(comments.body.data.map((item: { content: string }) => item.content)).toContain(
+      "Keep this comment after the move."
+    );
+  });
+
   it("deletes a task", async () => {
     const create = await request(app)
       .post("/tasks")

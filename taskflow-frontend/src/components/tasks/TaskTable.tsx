@@ -27,7 +27,7 @@ export function TaskTable({
 }) {
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="tf-task-table overflow-hidden rounded-xl border border-line bg-surface">
         {Array.from({ length: 8 }).map((_, i) => (
           <RowSkeleton key={i} />
         ))}
@@ -36,7 +36,7 @@ export function TaskTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className="tf-task-table overflow-hidden rounded-xl border border-line bg-surface">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-[13px]">
           <thead>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Building2, Check, ChevronsUpDown, LayoutDashboard, ListChecks, Loader2, LogOut, Moon, Settings, Sun, Users } from "lucide-react";
+import { Bell, Building2, Check, ChevronsUpDown, LayoutDashboard, ListChecks, Loader2, LogOut, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -25,31 +25,12 @@ const NAV = [
   { href: "/profile#organizations", label: "Organizations", mobileLabel: "Orgs", icon: Building2 },
 ] as const;
 
-function initialTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  const stored = window.localStorage.getItem("taskflow.theme");
-  const value = stored === "dark" || stored === "light" ? stored : document.documentElement.getAttribute("data-theme");
-  return value === "dark" ? "dark" : "light";
-}
-
-function useTheme() {
-  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
-  const toggle = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    window.localStorage.setItem("taskflow.theme", next);
-  };
-  return { theme, toggle };
-}
-
 export function AppShell({ children }: { children: ReactNode }) {
   const { status, user, orgId, organizationName, isAdmin, emailVerified, logout } = useAuth();
   const organization = useOrganization();
   const memberships = useOrganizationMemberships();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -76,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="tf-neo-brutal min-h-dvh bg-canvas">
+    <div className="tf-neo-brutal min-h-dvh bg-canvas" data-route={pathname}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop"
@@ -90,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} compact />
         <nav aria-label="Workspace controls" className="ml-auto flex shrink-0 items-center gap-1">
           <NotificationBell />
-          <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} theme={theme} onToggleTheme={toggle} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
+          <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
         </nav>
       </header>
 
@@ -100,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav aria-label="Workspace controls" className="flex items-center gap-3">
             <NotificationBell />
             <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} />
-            <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} theme={theme} onToggleTheme={toggle} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
+            <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
           </nav>
         </div>
       </header>
@@ -109,7 +90,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-64 shrink-0 flex-col border-r-2 border-line bg-canvas px-4 py-6 md:flex">
           <nav className="flex flex-1 flex-col gap-2">
             {NAV.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              const route = item.href.split("#", 1)[0];
+              const active = pathname === route || pathname.startsWith(route + "/");
               return (
                 <Link
                   key={item.href}
@@ -131,8 +113,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               email={user.email}
               org={organizationName ?? organization.data?.name ?? null}
               isAdmin={isAdmin}
-              theme={theme}
-              onToggleTheme={toggle}
               onLogout={handleLogout}
               onProfile={() => router.push("/profile")}
               full
@@ -148,7 +128,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Bottom tab bar (mobile) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t-2 border-line bg-surface md:hidden">
         {NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const route = item.href.split("#", 1)[0];
+          const active = pathname === route || pathname.startsWith(route + "/");
           return (
             <Link
               key={item.href}
@@ -291,8 +272,6 @@ function UserMenu({
   email,
   org,
   isAdmin,
-  theme,
-  onToggleTheme,
   onLogout,
   onProfile,
   full,
@@ -301,8 +280,6 @@ function UserMenu({
   email: string;
   org: string | null;
   isAdmin: boolean;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
   onLogout: () => void;
   onProfile: () => void;
   full?: boolean;
@@ -336,10 +313,6 @@ function UserMenu({
         <DropdownMenuItem onSelect={onProfile}>
           <Settings className="size-4" />
           Profile
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onToggleTheme}>
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          {theme === "dark" ? "Light mode" : "Dark mode"}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onLogout} destructive>
           <LogOut className="size-4" />

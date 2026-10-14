@@ -15,20 +15,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f4e8" },
-    { media: "(prefers-color-scheme: dark)", color: "#171714" },
-  ],
+  themeColor: "#f8f4e8",
 };
 
 // Sets the theme before first paint to avoid a flash of the wrong palette.
 const themeScript = `
 (function(){try{
-  var t = localStorage.getItem('taskflow.theme');
-  // The product's default register is paper/ink. Dark is opt-in via the
-  // workspace theme switch and remains persistent in localStorage.
-  if(!t){ t = 'light'; }
-  document.documentElement.setAttribute('data-theme', t);
+  localStorage.removeItem('taskflow.theme');
+  document.documentElement.setAttribute('data-theme', 'light');
 }catch(e){}})();
 `;
 

@@ -39,6 +39,7 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
+  const selectedProject = projects?.find((project) => project.id === projectId);
   const [status, setStatus] = useState<TaskStatus>("TODO");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
@@ -155,7 +156,8 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
           if (nextOpen) onOpenChange(true);
           else requestClose();
         }}
-        title={isEdit ? "Edit task" : "New task"}
+        title={isEdit ? "Edit task" : "Create new task"}
+        description={isEdit ? "Update the task details in your workspace." : "Add a task to a project and keep ownership clear."}
         size="lg"
         footer={
           <>
@@ -168,13 +170,15 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
           </>
         }
       >
-      <div className="space-y-4">
-        <div>
+      <div className="tf-task-form-layout">
+        <div className="tf-task-form-fields">
+          <div className="tf-task-form-section-title"><span>01 / TASK DETAILS</span><strong>{isEdit ? "Make an update" : "Start with the work"}</strong></div>
+          <div>
           <Label htmlFor="task-title">Title</Label>
           <Input id="task-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} autoFocus />
           <FieldError>{fieldErrors.title?.[0]}</FieldError>
-        </div>
-        <div>
+          </div>
+          <div>
           <Label htmlFor="task-description">Description</Label>
           <Textarea
             id="task-description"
@@ -184,8 +188,8 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
             maxLength={10000}
           />
           <FieldError>{fieldErrors.description?.[0]}</FieldError>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label htmlFor="task-project">Project</Label>
             <Select
@@ -228,7 +232,19 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
             <Input id="task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             <FieldError>{fieldErrors.dueDate?.[0]}</FieldError>
           </div>
+          </div>
         </div>
+        <aside className="tf-task-form-summary" aria-live="polite" aria-label="Task summary preview">
+          <span className="tf-task-form-summary-label">LIVE SUMMARY</span>
+          <h3>{title.trim() || "Untitled task"}</h3>
+          <p>{description.trim() || "Your description will appear here."}</p>
+          <dl>
+            <div><dt>Project</dt><dd>{selectedProject?.name ?? (projectsLoading ? "Loading projects…" : "Choose a project")}</dd></div>
+            <div><dt>Status</dt><dd>{status.replaceAll("_", " ")}</dd></div>
+            <div><dt>Priority</dt><dd>{priority}</dd></div>
+            <div><dt>Due date</dt><dd>{dueDate || "Not set"}</dd></div>
+          </dl>
+        </aside>
       </div>
       </Dialog>
       <Dialog

@@ -71,7 +71,7 @@ export function CommentsSection({ taskId }: { taskId: string }) {
   const comments = data?.data ?? [];
 
   return (
-    <section className="rounded-xl border border-line bg-surface p-4">
+    <section className="tf-task-panel tf-task-comments rounded-xl border border-line bg-surface p-4">
       <h2 className="mb-3 flex items-center gap-1.5 text-[13px] font-semibold text-ink-2">
         <MessageSquare className="size-3.5" />
         Comments{data ? ` (${data.total})` : ""}

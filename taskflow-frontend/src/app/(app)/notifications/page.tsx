@@ -4,7 +4,6 @@ import { Bell, Check, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -44,21 +43,24 @@ export default function NotificationsPage() {
   const unreadCount = notifications.data?.unreadCount ?? 0;
 
   return (
-    <div>
-      <PageHeader
-        title="Notifications"
-        description="Workspace updates, invitations, and task notifications."
-        actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => void notifications.refetch()} loading={notifications.isFetching}>
-              <RefreshCw className="size-3.5" /> Refresh
-            </Button>
-            {unreadCount > 0 && <Button size="sm" onClick={() => markAllRead.mutate()} loading={markAllRead.isPending}>Mark all read</Button>}
-          </>
-        }
-      />
+    <div className="tf-activity-page">
+      <header className="tf-activity-head">
+        <div>
+          <span className="tf-projects-eyebrow">Workspace / Notifications</span>
+          <h1>ACTIVITY LOG</h1>
+          <p>Notifications saved for your TaskFlow account, grouped by date.</p>
+        </div>
+        <div className="tf-activity-controls">
+          <div className="tf-activity-count"><strong>{entries.length}</strong><span>Notifications</span></div>
+          <div className="tf-activity-count is-unread"><strong>{unreadCount}</strong><span>Unread</span></div>
+          <Button variant="outline" size="sm" onClick={() => void notifications.refetch()} loading={notifications.isFetching}>
+            <RefreshCw className="size-3.5" /> Refresh
+          </Button>
+          {unreadCount > 0 && <Button size="sm" onClick={() => markAllRead.mutate()} loading={markAllRead.isPending}>Mark all read</Button>}
+        </div>
+      </header>
 
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="tf-activity-content space-y-6 p-4 md:p-6">
         {notifications.isError ? <ErrorState error={notifications.error} onRetry={() => void notifications.refetch()} /> : notifications.isLoading ? <Skeleton className="h-48" /> : entries.length === 0 ? (
           <EmptyState
             icon={<Bell className="size-5" />}
@@ -67,11 +69,13 @@ export default function NotificationsPage() {
           />
         ) : (
           Object.entries(groups).map(([group, groupedEntries]) => (
-            <section key={group} aria-labelledby={`notifications-${group.replaceAll(" ", "-")}`}>
-              <h2 id={`notifications-${group.replaceAll(" ", "-")}`} className="mb-3 flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.12em] text-ink-2">
-                <span className="h-0.5 w-5 bg-brand" /> {group}
+            <section key={group} className="tf-activity-group" aria-labelledby={`notifications-${group.replaceAll(" ", "-")}`}>
+              <h2 id={`notifications-${group.replaceAll(" ", "-")}`} className="tf-activity-group-title">
+                <span>{group}</span><i aria-hidden="true" />
               </h2>
-              <div className="overflow-hidden rounded-xl border border-line bg-surface">
+              <div className="tf-activity-timeline">
+                <span className="tf-activity-date-mark"><Bell className="size-4" /></span>
+                <div className="tf-activity-events">
                 {groupedEntries.map((entry) => {
                   const content = (
                     <span className="flex min-w-0 items-start gap-3">
@@ -89,12 +93,13 @@ export default function NotificationsPage() {
                     </span>
                   );
                   return (
-                    <article key={entry.id} className="flex items-start gap-3 border-b border-line p-4 last:border-0 md:p-5">
+                    <article key={entry.id} className={`tf-activity-item ${entry.readAt ? "is-read" : "is-new"}`}>
                       {entry.link ? <Link href={entry.link} onClick={() => { if (!entry.readAt) markRead.mutate(entry.id); }} className="min-w-0 flex-1 hover:underline focus-visible:outline-2 focus-visible:outline-focus">{content}</Link> : <div className="min-w-0 flex-1">{content}</div>}
                       {!entry.readAt && <Button variant="ghost" size="icon" aria-label={`Mark ${entry.title} as read`} onClick={() => markRead.mutate(entry.id)} loading={markRead.isPending}><Check className="size-4" /></Button>}
                     </article>
                   );
                 })}
+                </div>
               </div>
             </section>
           ))
