@@ -20,7 +20,8 @@ vi.mock("../../src/organizations/organization.data.js", () => ({
 
 describe("organization.service", () => {
   const db = {
-    orgMember: { count: vi.fn() }
+    orgMember: { count: vi.fn() },
+    $transaction: vi.fn()
   } as unknown as PrismaClient;
 
   const organizationId = "a0ab963b-d0ad-4f44-a160-11b5ca2dfa2f";
@@ -151,6 +152,31 @@ describe("organization.service", () => {
       await expect(changeMemberRole(
         db, organizationId, actorId, "ORG_ADMIN", targetId, "MEMBER"
       )).rejects.toMatchObject({ code: "LAST_ADMIN" });
+    });
+
+    it("notifies a member after removing them from the organization", async () => {
+      const transaction = {
+        orgMember: { delete: vi.fn().mockResolvedValue({}) },
+        notification: { create: vi.fn().mockResolvedValue({}) },
+      };
+      vi.mocked(db.$transaction).mockImplementation(async (callback) => callback(transaction as never));
+      vi.mocked(OrganizationData.findMember)
+        .mockResolvedValueOnce({ role: "ORG_ADMIN" } as never)
+        .mockResolvedValueOnce({ role: "MEMBER" } as never);
+      vi.mocked(OrganizationData.findOrganizationById).mockResolvedValue({ name: "Northstar Labs" } as never);
+
+      await removeMember(db, organizationId, actorId, "ORG_ADMIN", targetId);
+
+      expect(transaction.notification.create).toHaveBeenCalledWith({
+        data: {
+          userId: targetId,
+          organizationId,
+          organizationName: "Northstar Labs",
+          title: "Removed from organization",
+          message: 'You have been removed from "Northstar Labs" org.',
+          link: null,
+        },
+      });
     });
   });
 });

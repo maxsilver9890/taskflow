@@ -350,5 +350,20 @@ export async function removeMember(db: PrismaClient, organizationId: string, act
   const target = await OrganizationData.findMember(db, organizationId, userId);
   if (!target) throw new AppError(404, "MEMBER_NOT_FOUND", "Member not found.");
   if (target.role === "ORG_ADMIN" && (await db.orgMember.count({ where: { organizationId, role: "ORG_ADMIN" } })) <= 1) throw new AppError(409, "LAST_ADMIN", "The last admin cannot be removed.");
-  await OrganizationData.deleteMember(db, organizationId, userId);
+  const organization = await OrganizationData.findOrganizationById(db, organizationId);
+  if (!organization) throw new AppError(404, "ORGANIZATION_NOT_FOUND", "Organization not found.");
+
+  await db.$transaction(async (tx) => {
+    await tx.orgMember.delete({ where: { organizationId_userId: { organizationId, userId } } });
+    await tx.notification.create({
+      data: {
+        userId,
+        organizationId,
+        organizationName: organization.name,
+        title: "Removed from organization",
+        message: `You have been removed from "${organization.name}" org.`,
+        link: null,
+      },
+    });
+  });
 }
