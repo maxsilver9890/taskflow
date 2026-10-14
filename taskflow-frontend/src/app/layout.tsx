@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource/dela-gothic-one/400.css";
 import "@fontsource-variable/archivo";
+import "@fontsource-variable/space-grotesk";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./globals.css";

@@ -154,7 +154,7 @@ export function CommentsSection({ taskId }: { taskId: string }) {
                           {canModify && (
                             <button
                               onClick={() => startEdit(comment)}
-                              className="flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink"
+                              className="flex min-h-11 items-center gap-1 px-2 text-[11.5px] text-ink-3 hover:text-ink"
                             >
                               <Pencil className="size-3" /> Edit
                             </button>
@@ -162,7 +162,7 @@ export function CommentsSection({ taskId }: { taskId: string }) {
                           {canDelete && (
                             <button
                               onClick={() => setDeletingId(comment.id)}
-                              className="flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-danger"
+                              className="flex min-h-11 items-center gap-1 px-2 text-[11.5px] text-ink-3 hover:text-danger"
                             >
                               <Trash2 className="size-3" /> Delete
                             </button>

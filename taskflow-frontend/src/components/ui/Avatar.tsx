@@ -20,7 +20,7 @@ export function Avatar({ name, size = "md", className }: { name: string; size?: 
   return (
     <span
       title={name}
-      className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-semibold", dims, colorFor(name), className)}
+      className={cn("tf-neo-brutal-avatar inline-flex shrink-0 items-center justify-center rounded-full font-semibold", dims, colorFor(name), className)}
     >
       {initials(name)}
     </span>

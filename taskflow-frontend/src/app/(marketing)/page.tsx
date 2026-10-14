@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { ProductShowcase } from "@/components/MarketingProductShowcase";
+import { MarketingWorkspaceShowcase } from "@/components/MarketingWorkspaceShowcase";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 export default function MarketingPage() {
@@ -58,10 +60,9 @@ export default function MarketingPage() {
 
     // ── scroll-driven custom properties ───────────────────────────
     const docEl = document.documentElement;
-    const stageIds = ["stage1", "how-it-works", "stage4"];
+    const stageIds = ["stage1", "how-it-works"];
     const stages = stageIds.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     let ticking = false;
-    let lastLogIdx = -1;
 
     function progress(el: HTMLElement): number {
       const rect = el.getBoundingClientRect();
@@ -73,29 +74,16 @@ export default function MarketingPage() {
       return scrolled / total;
     }
 
-    function updateLogRows(p4: number) {
-      const idx = Math.min(4, Math.floor(p4 * 5));
-      if (idx === lastLogIdx) return;
-      lastLogIdx = idx;
-      root!.querySelectorAll(".log__row, .log__node").forEach((row) => {
-        const n = parseInt(row.getAttribute("data-row") ?? "0", 10);
-        row.classList.toggle("is-lit", n <= idx);
-      });
-    }
-
     function onScroll() {
       if (reduced) return;
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          if (stages.length === 3) {
+          if (stages.length === 2) {
             const values = stages.map(progress);
             const p1 = values[0] ?? 0;
             const p2 = values[1] ?? 0;
-            const p4 = values[2] ?? 0;
             docEl.style.setProperty("--p1", p1.toFixed(4));
             docEl.style.setProperty("--p2", p2.toFixed(4));
-            docEl.style.setProperty("--p4", p4.toFixed(4));
-            updateLogRows(p4);
           }
           ticking = false;
         });
@@ -106,8 +94,6 @@ export default function MarketingPage() {
       window.addEventListener("scroll", onScroll, { passive: true });
       cleanups.push(() => window.removeEventListener("scroll", onScroll));
       onScroll();
-    } else {
-      root.querySelectorAll(".log__row, .log__node").forEach((r) => r.classList.add("is-lit"));
     }
 
     // ── phyllotaxis star field ─────────────────────────────────────
@@ -215,7 +201,7 @@ export default function MarketingPage() {
           taskflow<em>.</em>
         </a>
         <div className="nav__links mono">
-          <a href="#product" onClick={(event) => scrollToAnchor(event, "product")}>
+          <a href="#product-showcase" onClick={(event) => scrollToAnchor(event, "product-showcase")}>
             Product
           </a>
           <a href="#how-it-works" onClick={(event) => scrollToAnchor(event, "how-it-works")}>
@@ -225,11 +211,21 @@ export default function MarketingPage() {
             Platform
           </a>
           <a href="#faq">FAQ</a>
-          <Link href="/login">Sign in</Link>
+          <Link href="/login">Log in</Link>
         </div>
         <Link className="nav__cta mono" href="/register">
-          Create workspace
+          Get started
         </Link>
+        <details className="nav__mobile">
+          <summary aria-label="Open navigation">Menu</summary>
+          <div className="nav__mobile-panel">
+            <a href="#product-showcase" onClick={(event) => { scrollToAnchor(event, "product-showcase"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Product</a>
+            <a href="#how-it-works" onClick={(event) => { scrollToAnchor(event, "how-it-works"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>How it works</a>
+            <a href="#stack" onClick={(event) => { scrollToAnchor(event, "stack"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Platform</a>
+            <a href="#faq" onClick={(event) => { scrollToAnchor(event, "faq"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>FAQ</a>
+            <Link href="/login">Log in</Link>
+          </div>
+        </details>
       </nav>
 
       {/* ══════════════════════ HERO ══════════════════════ */}
@@ -241,25 +237,24 @@ export default function MarketingPage() {
             <div className="hero__layout">
               <div className="hero__copy">
                 <p className="hero__strap strap" data-rev>
-                  Lightweight project and task management
+                  THE TEAM WORKSPACE FOR CLEAR OWNERSHIP
                 </p>
                 <h1 className="hero__headline split" id="heroHeadline">
-                  {['Know', 'what', 'needs', 'attention.', 'Keep', 'work', 'moving.'].map((word, index) => (
+                  {['Make', 'every', 'next', 'step', 'clear.'].map((word, index) => (
                     <span className="word" style={{ "--i": index } as React.CSSProperties} key={word + index}>
                       {word}
                     </span>
                   )).flatMap((el, i) => (i === 0 ? [el] : [" ", el]))}{" "}
                 </h1>
                 <p className="hero__lede" data-rev style={{ "--d": "60ms" } as React.CSSProperties}>
-                  TaskFlow gives teams one place to plan projects, assign work, track progress, and keep important work
-                  from slipping through the cracks.
+                  Plan projects, assign tasks, and keep your team aligned with a workspace that makes ownership and progress easy to see.
                 </p>
                 <div className="hero__cta" data-rev style={{ "--d": "140ms" } as React.CSSProperties}>
                   <Link className="btn" href="/register">
-                    Create workspace
+                    Get started
                   </Link>
                   <Link className="btn btn--ghost" href="#how-it-works">
-                    See how it works
+                    Explore the product
                   </Link>
                 </div>
                 <div className="hero__foot mono">
@@ -270,21 +265,29 @@ export default function MarketingPage() {
                     Project-wide visibility
                   </span>
                   <span data-rev style={{ "--d": "280ms" } as React.CSSProperties}>
-                    Updates with clear ownership
+                    Context that stays with the work
                   </span>
                 </div>
               </div>
 
-              {/* Real product preview — same status/priority system as the
-                  authenticated app's TaskTable, not a decorative mockup. */}
+              {/* Clearly labelled illustrative UI preview in the workspace's visual language. */}
               <div className="hero__preview" data-rev style={{ "--d": "180ms" } as React.CSSProperties}>
+                <div className="hero__float hero__float--progress" aria-label="Illustrative project progress">
+                  <span>PROJECT PROGRESS</span><strong>Launch planning</strong><i><b /></i>
+                </div>
+                <div className="hero__float hero__float--owner" aria-label="Illustrative task ownership">
+                  <span className="hero__float-avatar">MP</span><span><small>TASK OWNER</small><strong>Review dashboard</strong></span>
+                </div>
+                <div className="hero__float hero__float--notice" aria-label="Illustrative task notification">
+                  <span className="hero__float-mark">↗</span><span><small>WORKSPACE UPDATE</small><strong>Task status changed</strong></span>
+                </div>
                 <div className="hero__preview-card">
                   <div className="hpc__head">
                     <span className="hpc__dot" />
                     <span className="hpc__dot" />
                     <span className="hpc__dot" />
-                    <span className="hpc__title">Website redesign</span>
-                    <span className="hpc__count mono">4 tasks</span>
+                    <span className="hpc__title">Illustrative workspace</span>
+                    <span className="hpc__count mono">SAMPLE TASKS</span>
                   </div>
                   <div className="hpc__rows">
                     <div className="hpc__row">
@@ -314,7 +317,7 @@ export default function MarketingPage() {
                   </div>
                   <div className="hpc__foot mono">
                     <span className="hpc__foot-dot" />
-                    assignment update · queued for email delivery
+                    Example interface · task updates stay in context
                   </div>
                 </div>
               </div>
@@ -324,69 +327,36 @@ export default function MarketingPage() {
       </section>
 
       {/* ══════════════════════ FRAME — the board ══════════════════════ */}
-      <section className="stage stage--frame" id="how-it-works">
+      <section className="stage stage--frame workflow-story" id="how-it-works">
         <div className="stage__inner">
-          <div className="frame__photo architecture__visual" aria-hidden="true">
-            <svg className="architecture__connectors" viewBox="0 0 1200 360" preserveAspectRatio="none">
-              <path className="architecture__line" d="M156 90 H1024 V270 H763" />
-              <path className="architecture__line" d="M763 270 H1068" />
-              <path className="architecture__signal" pathLength="1" d="M156 90 H1024" />
-              <path className="architecture__signal" pathLength="1" d="M1024 90 V270 H763" />
-              <path className="architecture__signal" pathLength="1" d="M763 270 H1068" />
-            </svg>
-            <div className="architecture__nodes">
-              <div className="architecture__node">
-                <span className="architecture__label mono">Web</span>
-                <strong>Next.js app</strong>
-                <span>Projects, tasks, and team workspace</span>
-              </div>
-              <div className="architecture__node">
-                <span className="architecture__label mono">Identity</span>
-                <strong>Firebase Auth</strong>
-                <span>Email/password sign-in and verification</span>
-              </div>
-              <div className="architecture__node">
-                <span className="architecture__label mono">API</span>
-                <strong>TaskFlow API</strong>
-                <span>Verifies Firebase identity and enforces org roles</span>
-              </div>
-              <div className="architecture__node">
-                <span className="architecture__label mono">Data</span>
-                <strong>Prisma + PostgreSQL</strong>
-                <span>Organization-scoped work and notifications</span>
-              </div>
-              <div className="architecture__node">
-                <span className="architecture__label mono">Queue</span>
-                <strong>Redis + BullMQ</strong>
-                <span>Assignment, invite, and account emails</span>
-              </div>
-              <div className="architecture__node architecture__node--branch">
-                <span className="architecture__label mono">Worker</span>
-                <strong>Email worker</strong>
-                <span>Processes queued jobs</span>
-              </div>
-              <div className="architecture__node architecture__node--branch">
-                <span className="architecture__label mono">Delivery</span>
-                <strong>Provider + recovery</strong>
-                <span>Resend or console · retries · dead letter</span>
-              </div>
-            </div>
-          </div>
           <div className="frame__caption">
-            <div className="frame__scrim" />
-            <p className="eyebrow" data-rev>
-              How it works
-            </p>
-            <h2 className="frame__headline split">
-              <span data-text>
-                Work moves. TaskFlow <em>keeps up.</em>
-              </span>
+            <p className="eyebrow" data-rev>How it works</p>
+            <h2 className="frame__headline" data-rev>
+              From a new workspace to <em>work in motion.</em>
             </h2>
             <p className="frame__lede" data-rev>
-              Firebase sign-in is exchanged for a TaskFlow session; legacy API registration also supports email OTP.
-              The API enforces organization access and stores work through Prisma. In-app notifications are persisted,
-              while supported email flows run through a Redis queue and worker with retry and dead-letter handling.
+              A straightforward home for your organization, projects, tasks, and the updates that help your team stay aligned.
             </p>
+          </div>
+          <div className="workflow__layout">
+            <ol className="workflow__steps">
+              <li data-rev><span className="workflow__number">01</span><span><strong>Create a workspace</strong><small>Start an organization and invite your team.</small></span></li>
+              <li data-rev><span className="workflow__number">02</span><span><strong>Organize a project</strong><small>Give related work one shared home.</small></span></li>
+              <li data-rev><span className="workflow__number">03</span><span><strong>Assign and track tasks</strong><small>Keep owners, status, priority, and due dates visible.</small></span></li>
+              <li data-rev><span className="workflow__number">04</span><span><strong>Follow updates</strong><small>See task discussion and notifications in context.</small></span></li>
+            </ol>
+            <div className="workflow__preview" aria-label="Illustrative project workspace preview">
+              <div className="workflow__preview-head"><span>Illustrative project</span><span className="workflow__project-badge">PRODUCT LAUNCH</span></div>
+              <div className="workflow__project-title"><strong>Launch planning</strong><span className="workflow__avatars" aria-label="Illustrative teammates"><i>AL</i><i>MK</i><i>JR</i></span></div>
+              <div className="workflow__progress-label"><span>Project progress</span><span>Tasks grouped by status</span></div>
+              <div className="workflow__progress"><span /></div>
+              <div className="workflow__board">
+                <div><small>TO DO</small><p>Review launch checklist <b>MK</b></p></div>
+                <div><small>IN PROGRESS</small><p>Map onboarding flow <b>AL</b></p></div>
+                <div><small>DONE</small><p>Share project brief <b>JR</b></p></div>
+              </div>
+              <p className="workflow__preview-note">Example interface · statuses and names are illustrative</p>
+            </div>
           </div>
         </div>
       </section>
@@ -442,84 +412,7 @@ export default function MarketingPage() {
         </p>
       </section>
 
-      {/* ══════════════════════ LOG — reliable execution ══════════════════════ */}
-      <section className="stage stage--log" id="stage4">
-        <div className="stage__inner">
-          <div className="log__inner">
-            <div className="log__col">
-              <p className="log__eyebrow strap" data-rev>
-                Reliable notifications
-              </p>
-              <h2 className="log__headline split">
-                <span data-text>
-                  Every update should have a <em>clear path.</em>
-                </span>
-              </h2>
-              <p data-rev style={{ color: "var(--muted-dark)", fontSize: "13.5px", maxWidth: "36ch", margin: "-16px 0 28px" }}>
-                TaskFlow creates the relevant in-app updates and queues supported email. The worker retries failed email
-                jobs and records jobs that exhaust their retries for inspection.
-              </p>
-              <div className="log__rows" id="logRows">
-                <div className="log__row" data-row="0">
-                  <span className="mono">01</span>
-                  <strong>assignment event saved</strong>
-                  <em>Task and notification state are persisted</em>
-                </div>
-                <div className="log__row" data-row="1">
-                  <span className="mono">02</span>
-                  <strong>email job queued</strong>
-                  <em>Redis and BullMQ hold the delivery work</em>
-                </div>
-                <div className="log__row" data-row="2">
-                  <span className="mono">03</span>
-                  <strong>delivery attempt</strong>
-                  <em>The worker sends through the configured provider</em>
-                </div>
-                <div className="log__row" data-row="3">
-                  <span className="mono">04</span>
-                  <strong>retry with backoff</strong>
-                  <em>Transient failures get another attempt</em>
-                </div>
-                <div className="log__row" data-row="4">
-                  <span className="mono">05</span>
-                  <strong>delivered or moved to dead letter</strong>
-                  <em>Exhausted failures remain available for inspection</em>
-                </div>
-              </div>
-            </div>
-            <div className="log__field">
-              <div className="log__diagram" aria-label="Notification delivery flow">
-                <svg viewBox="0 0 640 280" role="img">
-                  <path className="log__path" d="M52 140 H588" pathLength="1" />
-                  <g className="log__node" data-row="0">
-                    <circle cx="52" cy="140" r="13" />
-                    <text x="52" y="102">Saved</text>
-                  </g>
-                  <g className="log__node" data-row="1">
-                    <circle cx="186" cy="140" r="13" />
-                    <text x="186" y="102">Queued</text>
-                  </g>
-                  <g className="log__node" data-row="2">
-                    <circle cx="320" cy="140" r="13" />
-                    <text x="320" y="102">Attempt</text>
-                  </g>
-                  <g className="log__node" data-row="3">
-                    <circle cx="454" cy="140" r="13" />
-                    <text x="454" y="102">Retry</text>
-                  </g>
-                  <g className="log__node log__node--final" data-row="4">
-                    <circle cx="588" cy="140" r="13" />
-                    <text x="588" y="102">Outcome</text>
-                    <text className="log__dead-letter" x="588" y="194">Delivered / DLQ</text>
-                  </g>
-                  <circle className="log__dot" cx="0" cy="0" r="7" />
-                </svg>
-              </div>
-              <canvas id="stars" width="800" height="800" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-      </section>
+      <MarketingWorkspaceShowcase />
 
       {/* ══════════════════════ KEY FEATURES ══════════════════════ */}
       <section className="band band--explainer" id="product">
@@ -557,6 +450,8 @@ export default function MarketingPage() {
           </p>
         </div>
       </section>
+
+      <ProductShowcase />
 
       {/* ══════════════════════ ARCHITECTURE ══════════════════════ */}
       <section className="band band--stack" id="stack">
@@ -770,7 +665,7 @@ export default function MarketingPage() {
             Create workspace
           </Link>
           <Link className="btn btn--ghost" href="/login">
-            Sign in
+            Log in
           </Link>
         </div>
       </section>

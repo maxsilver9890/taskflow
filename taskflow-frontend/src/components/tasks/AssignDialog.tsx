@@ -87,7 +87,7 @@ export function AssignDialog({
                 key={member.userId}
                 onClick={() => toggle(member)}
                 disabled={isPending}
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-2 disabled:opacity-60"
+                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-2 disabled:opacity-60"
               >
                 <Avatar name={member.name} size="sm" />
                 <span className="min-w-0 flex-1">

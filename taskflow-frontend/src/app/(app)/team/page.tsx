@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { FieldError, Input, Label } from "@/components/ui/Input";
@@ -82,12 +83,10 @@ export default function TeamPage() {
     enabled: isAdmin && !!orgId,
   });
   const invitationRows = invitations.data?.data ?? [];
-  const now = Date.now();
   const pendingInvitations = invitationRows.filter((invitation) =>
     !invitation.acceptedAt &&
     !invitation.cancelledAt &&
-    !invitation.rejectedAt &&
-    Boolean(invitation.expiresAt && new Date(invitation.expiresAt).getTime() > now)
+    !invitation.rejectedAt
   );
   const rejectedInvitations = invitationRows.filter((invitation) =>
     Boolean(invitation.rejectedAt) && !invitation.cancelledAt && !invitation.acceptedAt
@@ -117,12 +116,39 @@ export default function TeamPage() {
       <PageHeader title="Team" description={org.data ? `${org.data.name} · ${pluralize(org.data.memberCount, "member")}` : "Everyone in your organization."}
         actions={isAdmin ? <Button size="sm" onClick={() => setInviteOpen(true)}><UserPlus className="size-4" />Invite member</Button> : undefined} />
       <div className="p-4 md:p-6">
-        {query.isError ? <ErrorState error={query.error} onRetry={() => query.refetch()} /> : isLoading ? <div className="overflow-hidden rounded-xl border border-line bg-surface">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-0"><Skeleton className="size-8 rounded-full" /><Skeleton className="h-4 w-40" /></div>)}</div> : members.length === 0 ? <EmptyState icon={<Users className="size-5" />} title="No members yet" /> : <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <table className="w-full text-left text-[13px]"><thead><tr className="border-b border-line text-[11.5px] uppercase tracking-wide text-ink-3"><th className="px-4 py-2.5 font-medium">Name</th><th className="px-4 py-2.5 font-medium">Role</th><th className="hidden px-4 py-2.5 font-medium sm:table-cell">Joined</th>{isAdmin && <th className="w-12 px-2 py-2.5" />}</tr></thead>
-            <tbody>{members.map((member) => <tr key={member.userId} className="border-b border-line last:border-0"><td className="px-4 py-3"><div className="flex items-center gap-2.5"><Avatar name={member.name} size="sm" /><span className="min-w-0"><span className="block truncate font-medium text-ink">{member.name}{member.isMe && <span className="ml-1 font-normal text-ink-3">(you)</span>}</span><span className="block truncate text-[11.5px] text-ink-3">{member.email}</span></span></div></td>
-              <td className="px-4 py-3">{isAdmin && !member.isMe ? <select aria-label={`Role for ${member.name}`} value={member.role} onChange={(event) => changeRole(member.userId, event.target.value as OrgRole, member.role)} disabled={roleMutation.isPending} className="rounded-md border border-transparent bg-transparent px-1 py-1 text-[12px] text-ink outline-none hover:border-line focus:border-brand">{<><option value="ORG_ADMIN">Org admin</option><option value="MEMBER">Member</option></>}</select> : member.role === "ORG_ADMIN" ? <span className="text-[12px] font-medium text-brand">Org admin</span> : <span className="text-[12px] text-ink-3">Member</span>}</td>
-              <td className="hidden px-4 py-3 text-ink-2 sm:table-cell">{formatDueDate(member.joinedAt)}</td>{isAdmin && <td className="px-2 py-3 text-right">{!member.isMe && <Button aria-label={`Remove ${member.name}`} variant="ghost" size="icon" onClick={() => removeMember(member.userId, member.name)} loading={removeMutation.isPending}><Trash2 className="size-4 text-danger" /></Button>}</td>}</tr>)}</tbody>
-          </table></div>}
+        {query.isError ? <ErrorState error={query.error} onRetry={() => query.refetch()} /> : isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl border border-line bg-surface p-5"><div className="flex items-center gap-3"><Skeleton className="size-11 rounded-full" /><Skeleton className="h-5 w-36" /></div><Skeleton className="mt-5 h-8 w-28" /></div>)}
+          </div>
+        ) : members.length === 0 ? <EmptyState icon={<Users className="size-5" />} title="No members yet" /> : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {members.map((member) => (
+              <article key={member.userId} className="rounded-xl border border-line bg-surface p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={member.name} size="lg" />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-[15px] font-bold text-ink">{member.name}{member.isMe && <span className="ml-1 font-normal text-ink-3">(you)</span>}</h2>
+                      <p className="truncate text-[12px] text-ink-3">{member.email}</p>
+                    </div>
+                  </div>
+                  {isAdmin && !member.isMe && <Button aria-label={`Remove ${member.name}`} variant="ghost" size="icon" onClick={() => removeMember(member.userId, member.name)} loading={removeMutation.isPending}><Trash2 className="size-4 text-danger" /></Button>}
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3">Workspace role</span>
+                    {isAdmin && !member.isMe ? (
+                      <select aria-label={`Role for ${member.name}`} value={member.role} onChange={(event) => changeRole(member.userId, event.target.value as OrgRole, member.role)} disabled={roleMutation.isPending} className="min-h-9 border border-line bg-surface px-2 text-[12px] font-bold uppercase text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                        <option value="ORG_ADMIN">Org admin</option><option value="MEMBER">Member</option>
+                      </select>
+                    ) : <Badge className="w-fit bg-brand text-black">{member.role === "ORG_ADMIN" ? "Org admin" : "Member"}</Badge>}
+                  </div>
+                  <p className="text-right text-[11px] text-ink-3"><span className="block font-bold uppercase tracking-wide">Joined</span>{formatDueDate(member.joinedAt)}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
         {total > members.length && <p className="mt-2 text-[12px] text-ink-3">Showing {members.length} of {total} members.</p>}
       </div>
       {isAdmin && pendingInvitations.length > 0 ? (

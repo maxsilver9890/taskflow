@@ -185,8 +185,8 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
           />
           <FieldError>{fieldErrors.description?.[0]}</FieldError>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <Label htmlFor="task-project">Project</Label>
             <Select
               id="task-project"
@@ -223,7 +223,7 @@ export const TaskFormDialog = forwardRef<TaskFormDialogHandle, {
               <option value="URGENT">Urgent</option>
             </Select>
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Label htmlFor="task-due">Due date</Label>
             <Input id="task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             <FieldError>{fieldErrors.dueDate?.[0]}</FieldError>

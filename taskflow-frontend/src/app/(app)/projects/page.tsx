@@ -70,9 +70,9 @@ export default function ProjectsPage() {
           <ErrorState error={error} onRetry={refetch} />
         ) : data && data.data.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {data.data.map((project) => (
-                <ProjectCard key={project.id} project={project} onEdit={openEdit} onDelete={setDeleting} />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {data.data.map((project, index) => (
+                <ProjectCard key={project.id} project={project} featured={index === 0} onEdit={openEdit} onDelete={setDeleting} />
               ))}
             </div>
             <div className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">

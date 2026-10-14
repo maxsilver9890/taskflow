@@ -98,7 +98,7 @@ export function TaskFilters({
         <Label htmlFor="f-due-to">Due to</Label>
         <Input id="f-due-to" type="date" value={filters.dueTo} onChange={(e) => set("dueTo", e.target.value)} />
       </div>
-      <label className="flex h-9 items-center gap-2 text-[13px] text-ink-2">
+      <label className="flex min-h-11 items-center gap-2 px-2 text-[13px] text-ink-2">
         <input
           type="checkbox"
           checked={filters.overdue}

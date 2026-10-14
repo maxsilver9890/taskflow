@@ -260,3 +260,235 @@ h3 {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Neo-Brutalist workspace styling, scoped to the authenticated app and its
+   Radix portals so marketing and auth pages retain their existing treatment. */
+.tf-neo-brutal {
+  --canvas: #f8f4e8;
+  --surface: #fffdf7;
+  --surface-2: #efe9dc;
+  --line: #09090b;
+  --line-strong: #09090b;
+  --ink: #09090b;
+  --ink-2: #33312b;
+  --ink-3: #625e52;
+  --brand: #d2e823;
+  --brand-hover: #c3d91d;
+  --brand-ink: #09090b;
+  --brand-soft: #d2e823;
+  --focus: #09090b;
+  --shadow-pop: 4px 4px 0 #09090b;
+  --tf-hard-ink: #09090b;
+  --tf-button-bg: #09090b;
+  color: var(--ink);
+  font-family: "Space Grotesk", var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] .tf-neo-brutal {
+  --canvas: #0b2030;
+  --surface: #0f2736;
+  --surface-2: #142e3f;
+  --line: #d2e823;
+  --line-strong: #d2e823;
+  --ink: #f8f4e8;
+  --ink-2: #dfd7c8;
+  --ink-3: #b9b09f;
+  --brand: #d2e823;
+  --brand-hover: #e1f23c;
+  --brand-ink: #09090b;
+  --brand-soft: #d2e823;
+  --focus: #d2e823;
+  --shadow-pop: 4px 4px 0 #050a0f;
+  --tf-hard-ink: #d2e823;
+  --tf-button-bg: #09090b;
+}
+
+.tf-neo-brutal :is(h1, h2, h3, .font-display) {
+  font-family: "Dela Gothic One", var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.tf-neo-brutal .tf-glossy {
+  background: none;
+  color: inherit;
+  animation: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+}
+
+.tf-page-header {
+  border-bottom-width: 2px;
+}
+
+.tf-page-header h1 {
+  text-transform: uppercase;
+}
+
+.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border.border-line.bg-surface {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-pop);
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border.border-line.bg-surface:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal .border-line {
+  border-color: var(--line);
+}
+
+.tf-neo-brutal .text-brand {
+  color: var(--tf-hard-ink);
+}
+
+.tf-project-card {
+  min-height: 210px;
+}
+
+.tf-project-featured {
+  background: var(--brand);
+}
+
+.tf-project-featured :is(.text-ink, .text-ink-2, .text-ink-3, .text-brand) {
+  color: #09090b;
+}
+
+.tf-project-featured .border-line {
+  border-color: #09090b;
+}
+
+.tf-neo-brutal .bg-brand-soft {
+  color: var(--tf-hard-ink);
+}
+
+.tf-neo-brutal nav a.bg-brand-soft {
+  border: 2px solid var(--tf-hard-ink);
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tf-neo-brutal a > .bg-brand.text-brand-ink {
+  border: 2px solid var(--tf-hard-ink);
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal .tf-neo-brutal-button {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--tf-hard-ink);
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  transition: transform 100ms ease, box-shadow 100ms ease, background-color 100ms ease;
+}
+
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="primary"] {
+  border-color: var(--tf-hard-ink);
+  background: var(--tf-button-bg);
+  color: #d2e823;
+}
+
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="outline"],
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="secondary"] {
+  border-color: var(--tf-hard-ink);
+  color: var(--ink);
+}
+
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="ghost"] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="danger"] {
+  border-color: var(--tf-hard-ink);
+  background: #d32924;
+  color: #fff;
+}
+
+.tf-neo-brutal .tf-neo-brutal-button:not(:disabled):hover {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal .tf-neo-brutal-button[data-variant="ghost"]:not(:disabled):hover {
+  box-shadow: none;
+}
+
+.tf-neo-brutal .tf-neo-brutal-badge {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  font-family: "Space Grotesk", var(--font-sans), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.tf-neo-brutal .tf-neo-brutal-avatar {
+  border: 2px solid var(--tf-hard-ink);
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal :is(input, textarea, select) {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal :is(input, textarea, select):focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+  box-shadow: 3px 3px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal :focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+.tf-neo-brutal[role="dialog"],
+.tf-neo-brutal [role="dialog"] {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: 8px 8px 0 var(--tf-hard-ink);
+}
+
+.tf-neo-brutal[role="menu"],
+.tf-neo-brutal [data-radix-popper-content-wrapper] > [role="menu"] {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--tf-hard-ink);
+}
+
+.tf-hover-reveal { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .tf-hover-reveal { opacity: 0; }
+  .group:hover .tf-hover-reveal,
+  .tf-hover-reveal:focus-visible,
+  .tf-hover-reveal[data-state="open"] { opacity: 1; }
+}
+
+@media (pointer: coarse) {
+  .tf-neo-brutal .tf-touch-target,
+  .tf-neo-brutal .tf-neo-brutal-button { min-width: 44px; min-height: 44px; }
+  .tf-neo-brutal :is(input:not([type="checkbox"]), textarea, select) { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-neo-brutal *,
+  .tf-neo-brutal *::before,
+  .tf-neo-brutal *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

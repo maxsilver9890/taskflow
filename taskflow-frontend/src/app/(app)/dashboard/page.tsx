@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, CheckCircle2, ListChecks, Plus } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Bell, CheckCircle2, ListChecks, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog";
@@ -14,6 +15,9 @@ import { EmptyState, ErrorState } from "@/components/ui/States";
 import { useAllProjects } from "@/hooks/use-projects";
 import { useTaskList } from "@/hooks/use-tasks";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { notificationsApi } from "@/lib/api/services";
+import type { Notification } from "@/lib/api/types";
+import { qk } from "@/lib/query-keys";
 import { endOfDayPlusIso, formatDueDate, isOverdue, startOfTodayIso } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -30,6 +34,7 @@ export default function DashboardPage() {
     dueTo: endOfDayPlusIso(7),
     limit: 5,
   });
+  const notifications = useQuery({ queryKey: qk.notifications.all(), queryFn: notificationsApi.list });
 
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
@@ -204,6 +209,43 @@ export default function DashboardPage() {
                     <Link href={`/projects/${p.id}`} className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-surface-2">
                       <span className="min-w-0 truncate text-[13px] text-ink">{p.name}</span>
                       <ArrowUpRight className="size-3.5 shrink-0 text-ink-3" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Recent notifications are the activity data TaskFlow currently exposes. */}
+          <section className="rounded-xl border border-line bg-surface">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <h2 className="flex items-center gap-2 text-[13.5px] font-semibold text-ink">
+                <Bell className="size-4" /> Recent updates
+              </h2>
+              <Link href="/notifications" className="flex items-center gap-1 text-[12px] font-bold uppercase text-brand hover:underline">
+                All updates <ArrowUpRight className="size-3" />
+              </Link>
+            </div>
+            {notifications.isLoading ? (
+              <div className="space-y-3 p-4">
+                <Skeleton className="h-9" />
+                <Skeleton className="h-9" />
+              </div>
+            ) : notifications.isError ? (
+              <p className="p-4 text-[13px] text-ink-3">Updates are temporarily unavailable.</p>
+            ) : (notifications.data?.data.length ?? 0) === 0 ? (
+              <p className="p-4 text-[13px] text-ink-3">No notifications yet.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {notifications.data!.data.slice(0, 4).map((entry: Notification) => (
+                  <li key={entry.id}>
+                    <Link href={entry.link ?? "/notifications"} className="flex items-start gap-3 px-4 py-3 hover:bg-surface-2">
+                      <span className={`mt-1 size-2 shrink-0 border border-black ${entry.readAt ? "bg-surface-2" : "bg-brand"}`} aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-bold text-ink">{entry.title}</span>
+                        <span className="mt-0.5 block line-clamp-2 text-[12px] text-ink-2">{entry.message}</span>
+                        <span className="mt-1 block text-[10px] uppercase tracking-wide text-ink-3">{formatDueDate(entry.createdAt, true)}</span>
+                      </span>
                     </Link>
                   </li>
                 ))}

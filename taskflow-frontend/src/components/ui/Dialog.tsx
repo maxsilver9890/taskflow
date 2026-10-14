@@ -27,10 +27,10 @@ export function Dialog({
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
-        <RDialog.Overlay className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] data-[state=open]:animate-[tf-fade-in_0.15s_ease-out]" />
+        <RDialog.Overlay className="tf-neo-brutal fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] data-[state=open]:animate-[tf-fade-in_0.15s_ease-out]" />
         <RDialog.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 tf-pop-in",
+            "tf-neo-brutal fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 tf-pop-in",
             "max-h-[85vh] overflow-y-auto rounded-2xl border border-line bg-surface shadow-pop focus:outline-none",
             width,
           )}

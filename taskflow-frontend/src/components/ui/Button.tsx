@@ -34,7 +34,9 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
     <button
       ref={ref}
       disabled={disabled || loading}
+      data-variant={variant}
       className={cn(
+        "tf-neo-brutal-button",
         "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium",
         "transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-50",
         "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",

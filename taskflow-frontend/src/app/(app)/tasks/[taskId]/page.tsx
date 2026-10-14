@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, FolderKanban, Pencil, Trash2, UserPlus, UserX } from "lucide-react";
+import { ArrowLeft, Check, FolderKanban, Pencil, Trash2, UserPlus, UserX } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
-import { useDeleteTask, useTaskDetail, useUnassignTask } from "@/hooks/use-tasks";
+import { useDeleteTask, useTaskDetail, useUnassignTask, useUpdateTask } from "@/hooks/use-tasks";
 import { errorMessage } from "@/lib/api/errors";
 import { cn, formatDateTime, formatDueDate, isOverdue } from "@/lib/utils";
 
@@ -29,6 +29,7 @@ export default function TaskDetailPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteTask = useDeleteTask();
+  const updateTask = useUpdateTask();
   const unassignTask = useUnassignTask();
   const [unassigning, setUnassigning] = useState<string | null>(null);
 
@@ -70,6 +71,16 @@ export default function TaskDetailPage() {
     }
   }
 
+  async function completeTask() {
+    if (!task) return;
+    try {
+      await updateTask.mutateAsync({ id: task.id, input: { status: "DONE" } });
+      toast.success("Task completed");
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -87,6 +98,7 @@ export default function TaskDetailPage() {
         actions={
           task && (
             <>
+              {task.status !== "DONE" && <Button size="sm" onClick={() => void completeTask()} loading={updateTask.isPending}><Check className="size-3.5" /> Complete task</Button>}
               <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
                 <Pencil className="size-3.5" /> Edit
               </Button>
@@ -139,7 +151,7 @@ export default function TaskDetailPage() {
                     <button
                       onClick={() => unassign(a.userId, a.user.name)}
                       disabled={unassigning === a.userId}
-                      className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-ink-3 hover:bg-danger-soft hover:text-danger disabled:opacity-50"
+                      className="flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[12px] text-ink-3 hover:bg-danger-soft hover:text-danger disabled:opacity-50"
                     >
                       <UserX className="size-3.5" /> Remove
                     </button>

@@ -18,11 +18,11 @@ import { qk } from "@/lib/query-keys";
 import type { Notification } from "@/lib/api/types";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: ListChecks },
-  { href: "/tasks", label: "All tasks", icon: ListChecks },
-  { href: "/team", label: "Team", icon: Users },
-  { href: "/profile#organizations", label: "Organizations", icon: Building2 },
+  { href: "/dashboard", label: "Dashboard", mobileLabel: "Home", icon: LayoutDashboard },
+  { href: "/projects", label: "Projects", mobileLabel: "Projects", icon: ListChecks },
+  { href: "/tasks", label: "All tasks", mobileLabel: "Tasks", icon: ListChecks },
+  { href: "/team", label: "Team", mobileLabel: "Team", icon: Users },
+  { href: "/profile#organizations", label: "Organizations", mobileLabel: "Orgs", icon: Building2 },
 ] as const;
 
 function initialTheme(): "light" | "dark" {
@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="tf-neo-brutal min-h-dvh bg-canvas">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop"
@@ -85,20 +85,28 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {/* Top bar (mobile) + side rail (desktop) */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur-sm md:hidden">
-        <Logo />
-        <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} />
-        <nav className="ml-auto flex items-center gap-1">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/90 px-3 backdrop-blur-sm md:hidden">
+        <span className="shrink-0"><Logo /></span>
+        <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} compact />
+        <nav aria-label="Workspace controls" className="ml-auto flex shrink-0 items-center gap-1">
           <NotificationBell />
           <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} theme={theme} onToggleTheme={toggle} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
         </nav>
       </header>
 
+      <header className="sticky top-0 z-30 hidden h-14 border-b-2 border-line bg-surface md:block">
+        <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-4 px-6">
+          <Logo />
+          <nav aria-label="Workspace controls" className="flex items-center gap-3">
+            <NotificationBell />
+            <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} />
+            <UserMenu name={user.name} email={user.email} org={organizationName ?? organization.data?.name ?? null} isAdmin={isAdmin} theme={theme} onToggleTheme={toggle} onLogout={handleLogout} onProfile={() => router.push("/profile")} />
+          </nav>
+        </div>
+      </header>
+
       <div className="mx-auto flex max-w-[1400px]">
-        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface px-3 py-4 md:flex">
-          <div className="mb-6 px-2">
-            <Logo />
-          </div>
+        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-60 shrink-0 flex-col border-r border-line bg-surface px-3 py-4 md:flex">
           <nav className="flex flex-1 flex-col gap-0.5">
             {NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -133,10 +141,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <main id="main" className="min-w-0 flex-1 pb-16 md:pb-0">
-          <div className="hidden h-14 items-center justify-end gap-2 border-b border-line bg-surface/90 px-6 backdrop-blur-sm md:flex">
-            <NotificationBell />
-            <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} />
-          </div>
           {children}
         </main>
       </div>
@@ -150,12 +154,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10.5px] font-medium",
+                "flex min-w-0 min-h-11 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-[10.5px] font-medium",
                 active ? "text-brand" : "text-ink-3",
               )}
             >
               <item.icon className="size-[18px]" />
-              {item.label}
+              <span className="max-w-full truncate">{item.mobileLabel}</span>
             </Link>
           );
         })}
@@ -167,9 +171,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 function OrganizationSwitcher({
   memberships,
   currentId,
+  compact = false,
 }: {
   memberships: { id: string; name: string; role: "ORG_ADMIN" | "MEMBER" }[];
   currentId: string | null;
+  compact?: boolean;
 }) {
   const { switchOrganization } = useAuth();
   const [switching, setSwitching] = useState(false);
@@ -187,11 +193,11 @@ function OrganizationSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex min-w-[150px] items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-left hover:bg-surface-2" disabled={switching}>
+        <button className={cn("flex min-w-[150px] items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-left hover:bg-surface-2", compact && "min-h-9 min-w-0 max-w-[132px] flex-1 px-2 md:min-w-[150px] md:max-w-none md:flex-none tf-touch-target")} disabled={switching}>
           <span className="min-w-0 flex-1">
             <span className="block text-[10px] uppercase tracking-wide text-ink-3">Organization</span>
             <span className="block truncate text-[13px] font-medium text-ink">{current?.name ?? "Select organization"}</span>
-          {current && <span className="block text-[10px] text-ink-3">{current.role === "ORG_ADMIN" ? "Org admin" : "Member"}</span>}
+          {current && !compact && <span className="block text-[10px] text-ink-3">{current.role === "ORG_ADMIN" ? "Org admin" : "Member"}</span>}
           </span>
           <ChevronsUpDown className="size-4 shrink-0 text-ink-3" />
         </button>
@@ -228,7 +234,7 @@ function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Notifications"
-          className="relative rounded-lg p-2 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+          className="relative flex size-9 shrink-0 items-center justify-center rounded-lg p-2 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink tf-touch-target"
         >
           <Bell className="size-[18px]" />
           {unreadCount > 0 && (
@@ -250,7 +256,7 @@ function NotificationBell() {
             </button>
           )}
         </div>
-        <div className="max-h-72 min-w-[280px] overflow-y-auto border-t border-line">
+        <div className="max-h-72 min-w-[280px] max-w-[calc(100vw-1rem)] overflow-y-auto border-t border-line">
           {entries.length === 0 ? (
             <p className="px-2.5 py-6 text-center text-[12px] text-ink-3">No notifications yet.</p>
           ) : (
@@ -308,7 +314,7 @@ function UserMenu({
           aria-label={full ? undefined : `Account menu for ${name}`}
           className={cn(
             "flex items-center gap-2 rounded-lg text-left transition-colors hover:bg-surface-2",
-            full ? "w-full p-2" : "p-1",
+            full ? "w-full p-2" : "min-h-9 min-w-9 justify-center p-1 tf-touch-target",
           )}
         >
           <Avatar name={name} size="sm" />

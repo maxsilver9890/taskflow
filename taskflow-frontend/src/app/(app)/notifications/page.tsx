@@ -1,45 +1,103 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, Check, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { EmptyState } from "@/components/ui/States";
+import { Button } from "@/components/ui/Button";
+import { EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useQuery } from "@tanstack/react-query";
 import { notificationsApi } from "@/lib/api/services";
 import { qk } from "@/lib/query-keys";
 import { formatDateTime } from "@/lib/utils";
 import type { Notification } from "@/lib/api/types";
-import Link from "next/link";
+
+function notificationGroup(createdAt: string) {
+  const date = new Date(createdAt);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (left: Date, right: Date) => left.toDateString() === right.toDateString();
+  if (sameDay(date, today)) return "Today";
+  if (sameDay(date, yesterday)) return "Yesterday";
+  return date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
 
 export default function NotificationsPage() {
+  const queryClient = useQueryClient();
   const notifications = useQuery({ queryKey: qk.notifications.all(), queryFn: notificationsApi.list });
+  const markRead = useMutation({
+    mutationFn: notificationsApi.markRead,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.notifications.all() }),
+  });
+  const markAllRead = useMutation({
+    mutationFn: notificationsApi.markAllRead,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.notifications.all() }),
+  });
   const entries = notifications.data?.data ?? [];
+  const groups = entries.reduce<Record<string, Notification[]>>((result, entry) => {
+    const label = notificationGroup(entry.createdAt);
+    (result[label] ??= []).push(entry);
+    return result;
+  }, {});
+  const unreadCount = notifications.data?.unreadCount ?? 0;
 
   return (
     <div>
       <PageHeader
         title="Notifications"
-        description="Updates and activity from your TaskFlow organizations."
+        description="Workspace updates, invitations, and task notifications."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void notifications.refetch()} loading={notifications.isFetching}>
+              <RefreshCw className="size-3.5" /> Refresh
+            </Button>
+            {unreadCount > 0 && <Button size="sm" onClick={() => markAllRead.mutate()} loading={markAllRead.isPending}>Mark all read</Button>}
+          </>
+        }
       />
 
-      <div className="space-y-4 p-4 md:p-6">
-        {notifications.isLoading ? <Skeleton className="h-48" /> : entries.length === 0 ? (
+      <div className="space-y-6 p-4 md:p-6">
+        {notifications.isError ? <ErrorState error={notifications.error} onRetry={() => void notifications.refetch()} /> : notifications.isLoading ? <Skeleton className="h-48" /> : entries.length === 0 ? (
           <EmptyState
             icon={<Bell className="size-5" />}
             title="No notifications yet"
             description="You’re all caught up."
           />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-line bg-surface">
-            {entries.map((entry: Notification) => (
-              <div key={entry.id} className="border-b border-line px-4 py-3 last:border-0">
-                <p className="font-medium text-ink">{entry.link ? <Link href={entry.link} className="hover:underline">{entry.title}</Link> : entry.title}</p>
-                <p className="text-[13px] text-ink-2">{entry.message}</p>
-                <p className="mt-1 text-[11px] text-ink-3">{formatDateTime(entry.createdAt)}</p>
+          Object.entries(groups).map(([group, groupedEntries]) => (
+            <section key={group} aria-labelledby={`notifications-${group.replaceAll(" ", "-")}`}>
+              <h2 id={`notifications-${group.replaceAll(" ", "-")}`} className="mb-3 flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.12em] text-ink-2">
+                <span className="h-0.5 w-5 bg-brand" /> {group}
+              </h2>
+              <div className="overflow-hidden rounded-xl border border-line bg-surface">
+                {groupedEntries.map((entry) => {
+                  const content = (
+                    <span className="flex min-w-0 items-start gap-3">
+                      <span className={`mt-1 flex size-9 shrink-0 items-center justify-center border-2 border-black ${entry.readAt ? "bg-surface-2" : "bg-brand"}`}>
+                        <Bell className="size-4 text-black" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-ink">{entry.title}</span>
+                          {!entry.readAt && <span className="border-2 border-black bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">New</span>}
+                        </span>
+                        <span className="mt-1 block text-[13px] leading-relaxed text-ink-2">{entry.message}</span>
+                        <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-ink-3">{formatDateTime(entry.createdAt)}</span>
+                      </span>
+                    </span>
+                  );
+                  return (
+                    <article key={entry.id} className="flex items-start gap-3 border-b border-line p-4 last:border-0 md:p-5">
+                      {entry.link ? <Link href={entry.link} onClick={() => { if (!entry.readAt) markRead.mutate(entry.id); }} className="min-w-0 flex-1 hover:underline focus-visible:outline-2 focus-visible:outline-focus">{content}</Link> : <div className="min-w-0 flex-1">{content}</div>}
+                      {!entry.readAt && <Button variant="ghost" size="icon" aria-label={`Mark ${entry.title} as read`} onClick={() => markRead.mutate(entry.id)} loading={markRead.isPending}><Check className="size-4" /></Button>}
+                    </article>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </section>
+          ))
         )}
       </div>
     </div>

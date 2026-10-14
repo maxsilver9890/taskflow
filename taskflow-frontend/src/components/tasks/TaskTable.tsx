@@ -83,7 +83,7 @@ export function TaskTable({
                   <td className="px-2 py-3 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="flex size-7 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Task options">
+                        <button className="flex size-7 items-center justify-center rounded-md text-ink-3 tf-touch-target hover:bg-surface-2 hover:text-ink" aria-label="Task options">
                           <MoreHorizontal className="size-4" />
                         </button>
                       </DropdownMenuTrigger>

@@ -49,7 +49,7 @@ export function TaskCard({
           <DropdownMenuTrigger asChild>
             <button
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity hover:bg-surface-2 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3 tf-hover-reveal tf-touch-target transition-opacity hover:bg-surface-2 hover:text-ink group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
               aria-label="Task options"
             >
               <MoreHorizontal className="size-3.5" />

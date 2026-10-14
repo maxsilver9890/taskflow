@@ -14,7 +14,7 @@ export function DropdownMenuContent({ children, align = "end" }: { children: Rea
       <RDropdown.Content
         align={align}
         sideOffset={6}
-        className="tf-pop-in z-50 min-w-[180px] overflow-hidden rounded-lg border border-line bg-surface p-1 shadow-pop"
+        className="tf-neo-brutal tf-pop-in z-50 min-w-[180px] overflow-hidden rounded-lg border border-line bg-surface p-1 shadow-pop"
       >
         {children}
       </RDropdown.Content>
@@ -38,7 +38,7 @@ export function DropdownMenuItem({
       onSelect={onSelect}
       disabled={disabled}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] outline-none transition-colors",
+        "flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[13px] outline-none transition-colors tf-touch-target",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
         destructive ? "text-danger hover:bg-danger-soft" : "text-ink hover:bg-surface-2",
       )}

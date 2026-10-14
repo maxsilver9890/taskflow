@@ -141,7 +141,7 @@ export default function ProfilePage() {
           <CardHeader><h2 className="text-[15px] font-semibold text-danger">Danger zone</h2></CardHeader>
           <CardBody className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="font-medium text-ink">Leave {data.organization.name}</p><p className="text-[13px] text-ink-3">You will lose access to this organization.</p></div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {isLastAdminWithOtherMembers && (
                 <Button variant="outline" size="sm" disabled={transferAdmin.isPending} onClick={() => {
                   setTransferTargetId(null);

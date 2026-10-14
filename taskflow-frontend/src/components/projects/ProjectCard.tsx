@@ -18,10 +18,12 @@ const STATUS_ORDER = [
 
 export function ProjectCard({
   project,
+  featured = false,
   onEdit,
   onDelete,
 }: {
   project: Project;
+  featured?: boolean;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
 }) {
@@ -30,7 +32,7 @@ export function ProjectCard({
   const total = dashboard ? Object.values(dashboard.counts).reduce((a, b) => a + b, 0) : 0;
 
   return (
-    <div className="group tf-pop-in relative flex flex-col rounded-xl border border-line bg-surface p-4 transition-shadow hover:shadow-pop">
+    <article className={`tf-project-card group tf-pop-in relative flex flex-col rounded-xl border border-line bg-surface p-5 transition-shadow hover:shadow-pop ${featured ? "tf-project-featured sm:col-span-2" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <Link href={`/projects/${project.id}`} className="min-w-0 flex-1">
           <h3 className="truncate font-display text-[15px] font-semibold text-ink group-hover:text-brand">{project.name}</h3>
@@ -38,7 +40,7 @@ export function ProjectCard({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity hover:bg-surface-2 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 tf-hover-reveal tf-touch-target transition-opacity hover:bg-surface-2 hover:text-ink group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
               aria-label="Project options"
             >
               <MoreHorizontal className="size-4" />
@@ -80,10 +82,10 @@ export function ProjectCard({
 
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-[11.5px] text-ink-3">
         <span>Created {formatDueDate(project.createdAt, true)}</span>
-        <Link href={`/projects/${project.id}`} className="flex items-center gap-0.5 font-medium text-brand opacity-0 transition-opacity group-hover:opacity-100">
+        <Link href={`/projects/${project.id}`} className="flex items-center gap-0.5 font-medium text-brand tf-hover-reveal tf-touch-target transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
           Open <ArrowUpRight className="size-3" />
         </Link>
       </div>
-    </div>
+    </article>
   );
 }
