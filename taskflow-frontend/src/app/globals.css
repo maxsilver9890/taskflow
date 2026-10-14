@@ -180,10 +180,6 @@ h3 {
   }
 }
 
-@keyframes tf-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
 @keyframes tf-slide-in {
   from {
     transform: translateX(24px);
@@ -304,7 +300,7 @@ h3 {
   text-transform: uppercase;
 }
 
-.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border.border-line.bg-surface {
+.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border-line {
   border: 2px solid var(--tf-hard-ink);
   border-radius: 0;
   box-shadow: var(--shadow-pop);
@@ -326,7 +322,7 @@ h3 {
   border-radius: 0;
 }
 
-.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border.border-line.bg-surface:hover {
+.tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border-line:hover {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 var(--tf-hard-ink);
 }
@@ -337,6 +333,12 @@ h3 {
 
 .tf-neo-brutal .text-brand {
   color: var(--tf-hard-ink);
+}
+
+/* Keep accent text readable on ink panels. The default ink override above is
+   intentional for links on paper; dark cards and banners use the acid accent. */
+.tf-neo-brutal :is(.bg-ink.text-brand, .text-brand.bg-ink, .bg-ink .text-brand) {
+  color: var(--brand);
 }
 
 .tf-project-card {
@@ -359,8 +361,17 @@ h3 {
   color: var(--tf-hard-ink);
 }
 
+.tf-neo-brutal header a > span.bg-brand {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 var(--tf-hard-ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+}
+
 .tf-neo-brutal nav a.bg-brand-soft {
   border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
   box-shadow: 2px 2px 0 var(--tf-hard-ink);
   font-weight: 700;
   text-transform: uppercase;

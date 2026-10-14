@@ -25,7 +25,9 @@ export const viewport: Viewport = {
 const themeScript = `
 (function(){try{
   var t = localStorage.getItem('taskflow.theme');
-  if(!t){ t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+  // The product's default register is paper/ink. Dark is opt-in via the
+  // workspace theme switch and remains persistent in localStorage.
+  if(!t){ t = 'light'; }
   document.documentElement.setAttribute('data-theme', t);
 }catch(e){}})();
 `;

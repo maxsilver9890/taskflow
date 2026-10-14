@@ -94,8 +94,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <header className="sticky top-0 z-30 hidden h-14 border-b-2 border-line bg-surface md:block">
-        <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between gap-4 px-6">
+      <header className="sticky top-0 z-30 hidden h-16 border-b-2 border-line bg-canvas md:block">
+        <div className="flex h-full w-full items-center justify-between gap-4 px-6 lg:px-8">
           <Logo />
           <nav aria-label="Workspace controls" className="flex items-center gap-3">
             <NotificationBell />
@@ -105,9 +105,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[1400px]">
-        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-60 shrink-0 flex-col border-r-2 border-line bg-surface px-3 py-4 md:flex">
-          <nav className="flex flex-1 flex-col gap-0.5">
+      <div className="flex w-full">
+        <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-64 shrink-0 flex-col border-r-2 border-line bg-canvas px-4 py-6 md:flex">
+          <nav className="flex flex-1 flex-col gap-2">
             {NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
@@ -115,8 +115,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-colors",
-                    active ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+                    "flex items-center gap-3 border-2 border-transparent px-3 py-3 text-[12px] font-bold uppercase tracking-wide transition-all",
+                    active ? "border-line bg-brand text-ink shadow-[2px_2px_0_#09090B]" : "text-ink-2 hover:border-line hover:bg-brand hover:text-ink",
                   )}
                 >
                   <item.icon className="size-4" />

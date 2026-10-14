@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Circle,
-  ClipboardList, FolderKanban, Plus, Users,
+  ClipboardList, FolderKanban, Plus,
 } from "lucide-react";
 
 import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
@@ -32,7 +32,7 @@ const columns: { status: TaskStatus; label: string; icon: typeof Circle; tone: s
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
 export default function DashboardPage() {
-  const { user, organizationName } = useAuth();
+  const { organizationName } = useAuth();
   const projects = useAllProjects();
   const members = useOrgMembers();
   const [projectFormOpen, setProjectFormOpen] = useState(false);
@@ -53,44 +53,24 @@ export default function DashboardPage() {
 
   return (
     <div className="min-w-0">
-      <header className="border-b-2 border-line bg-surface px-4 py-5 md:px-7 md:py-6">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[.2em] text-ink-3">{organizationName ?? "Your workspace"}</p>
-            <h1 className="font-display text-3xl uppercase leading-tight tracking-[-.05em] sm:text-4xl">Dashboard</h1>
-            <p className="mt-1 text-sm text-ink-2">{user ? `Good to have you back, ${user.name.split(" ")[0]}. ` : ""}A clear view of the work moving your team forward.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/team" className="inline-flex min-h-11 items-center gap-2 border-2 border-line bg-surface px-4 py-2 text-xs font-bold uppercase shadow-pop transition-transform hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none">
-              <Users className="size-4" /> Invite team
-            </Link>
-            <Button onClick={() => setTaskFormOpen(true)} className="min-h-11 rounded-none border-2 border-line bg-ink px-4 text-xs font-bold uppercase text-brand shadow-pop hover:bg-ink-2">
-              <Plus className="size-4" /> Create task
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto grid min-w-0 max-w-[1600px] grid-cols-1 gap-5 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_290px] xl:gap-6">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-5 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-6">
         <main className="flex min-w-0 flex-col gap-6">
           <div className="overflow-hidden border-2 border-line bg-ink py-2 text-brand shadow-pop" aria-label="Workspace summary">
-            <div className="flex min-w-max animate-[tf-marquee_28s_linear_infinite] items-center gap-8 px-4 text-[10px] font-bold uppercase tracking-[.16em] motion-reduce:animate-none">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 text-[10px] font-bold uppercase tracking-[.16em]">
               <span>{organizationName ?? "TaskFlow workspace"} / Work in motion</span><span aria-hidden="true">✳</span>
-              <span>{projects.data?.length ?? 0} projects in your workspace</span><span aria-hidden="true">✳</span>
-              <span>{members.total} team members</span><span aria-hidden="true">✳</span>
+              <span>{projects.data?.length ?? 0} {projects.data?.length === 1 ? "project" : "projects"}</span><span aria-hidden="true">✳</span>
+              <span>{members.total} team {members.total === 1 ? "member" : "members"}</span><span aria-hidden="true">✳</span>
               <span>{unreadCount} unread updates</span><span aria-hidden="true">✳</span>
-              <span aria-hidden="true">{organizationName ?? "TaskFlow workspace"} / Work in motion</span><span aria-hidden="true">✳</span>
-              <span aria-hidden="true">{projects.data?.length ?? 0} projects in your workspace</span><span aria-hidden="true">✳</span>
             </div>
           </div>
 
           <section className="grid gap-5 lg:grid-cols-12" aria-label="Workspace overview">
             <div className="relative isolate overflow-hidden border-2 border-line bg-surface p-5 shadow-[8px_8px_0_#090909] sm:p-8 lg:col-span-8">
               <div className="pointer-events-none absolute inset-0 -z-10 opacity-[.07]" style={{ backgroundImage: "radial-gradient(#09090B 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-[.2em] text-ink-3">Workspace overview</p>
-              <h2 className="max-w-3xl font-display text-4xl uppercase leading-[.98] tracking-[-.06em] sm:text-6xl">Move work<br className="hidden sm:block" /> forward.</h2>
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-2">
-                {selectedProject ? <>Your team has <strong className="bg-brand px-1 text-ink">{activeCount} active {activeCount === 1 ? "task" : "tasks"}</strong> in <strong>{selectedProject.name}</strong>.</> : <>Bring projects, task ownership, and team updates together in one workspace.</>}
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[.2em] text-ink-3">{organizationName ?? "Workspace overview"}</p>
+              <h1 className="max-w-3xl font-display text-4xl uppercase leading-[.98] tracking-[-.06em] sm:text-5xl lg:text-6xl">Dashboard</h1>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-2 sm:text-lg">
+                {selectedProject ? <>Your team has <strong className="bg-brand px-1 text-ink">{activeCount} active {activeCount === 1 ? "task" : "tasks"}</strong> in <strong>{selectedProject.name}</strong>, across {projects.data?.length ?? 0} {projects.data?.length === 1 ? "project" : "projects"}.</> : <>Bring projects, task ownership, and team updates together in one workspace.</>}
                 {dueTodayCount > 0 && <> <strong className="bg-brand px-1 text-ink">{dueTodayCount} due today</strong>.</>}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
@@ -123,7 +103,7 @@ export default function DashboardPage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-[.2em] text-ink-3">Your work, organized</p>
-                <h2 id="board-heading" className="font-display text-xl uppercase tracking-[-.04em] sm:text-2xl">Project board</h2>
+                <h2 id="board-heading" className="font-display text-xl uppercase tracking-[-.04em] sm:text-2xl">Project board{selectedProject ? `: ${selectedProject.name}` : ""}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {projects.data && projects.data.length > 0 && <label className="sr-only" htmlFor="dashboard-project">Choose project</label>}
@@ -143,10 +123,10 @@ export default function DashboardPage() {
             ) : projectTasks.isError ? (
               <ErrorState error={projectTasks.error} onRetry={projectTasks.refetch} />
             ) : (
-              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+              <div className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
                 {columns.map(({ status, label, icon: Icon, tone }) => {
                   const columnTasks = groupedTasks[status] ?? [];
-                  return <section key={status} aria-label={`${label}: ${columnTasks.length} tasks`} className="min-w-0">
+                  return <section key={status} aria-label={`${label}: ${columnTasks.length} tasks`} className="w-[min(78vw,260px)] min-w-[240px] shrink-0 snap-start">
                     <div className={`mb-3 flex items-center justify-between border-2 border-line p-3 shadow-pop ${tone}`}>
                       <span className="flex items-center gap-2 font-display text-xs uppercase"><Icon className="size-4" />{label}</span>
                       <span className="grid min-h-7 min-w-7 place-items-center border border-line bg-surface px-1 text-xs font-bold">{String(columnTasks.length).padStart(2, "0")}</span>
@@ -185,7 +165,7 @@ export default function DashboardPage() {
           <section className="border-2 border-line bg-ink p-5 text-brand shadow-pop">
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[.18em]">Team on TaskFlow</p>
             <div className="flex items-end justify-between gap-3">
-              <div><p className="font-display text-3xl uppercase">{members.isLoading ? "—" : members.total} members</p><p className="mt-1 text-xs text-canvas/70">Working together in this organization</p></div>
+              <div><p className="font-display text-3xl uppercase">{members.isLoading ? "—" : members.total} {members.total === 1 ? "member" : "members"}</p><p className="mt-1 text-xs text-canvas/70">Working together in this organization</p></div>
               <Link href="/team" aria-label="View team" className="grid size-10 shrink-0 place-items-center border-2 border-brand text-brand hover:bg-brand hover:text-ink"><ArrowRight className="size-4" /></Link>
             </div>
             {members.members.length > 0 && <div className="mt-4 flex -space-x-2" aria-label="Organization members">
