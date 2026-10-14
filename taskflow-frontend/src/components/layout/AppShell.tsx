@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {/* Top bar (mobile) + side rail (desktop) */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/90 px-3 backdrop-blur-sm md:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b-2 border-line bg-surface px-3 md:hidden">
         <span className="shrink-0"><Logo /></span>
         <OrganizationSwitcher memberships={memberships.data?.data ?? []} currentId={orgId} compact />
         <nav aria-label="Workspace controls" className="ml-auto flex shrink-0 items-center gap-1">
@@ -106,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <div className="mx-auto flex max-w-[1400px]">
-        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-60 shrink-0 flex-col border-r border-line bg-surface px-3 py-4 md:flex">
+        <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-60 shrink-0 flex-col border-r-2 border-line bg-surface px-3 py-4 md:flex">
           <nav className="flex flex-1 flex-col gap-0.5">
             {NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* Bottom tab bar (mobile) */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 backdrop-blur-sm md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t-2 border-line bg-surface md:hidden">
         {NAV.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -193,7 +193,7 @@ function OrganizationSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={cn("flex min-w-[150px] items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-left hover:bg-surface-2", compact && "min-h-9 min-w-0 max-w-[132px] flex-1 px-2 md:min-w-[150px] md:max-w-none md:flex-none tf-touch-target")} disabled={switching}>
+        <button className={cn("flex min-w-[150px] items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-left shadow-pop hover:bg-surface-2", compact && "min-h-9 min-w-0 max-w-[132px] flex-1 px-2 md:min-w-[150px] md:max-w-none md:flex-none tf-touch-target")} disabled={switching}>
           <span className="min-w-0 flex-1">
             <span className="block text-[10px] uppercase tracking-wide text-ink-3">Organization</span>
             <span className="block truncate text-[13px] font-medium text-ink">{current?.name ?? "Select organization"}</span>
@@ -313,7 +313,7 @@ function UserMenu({
         <button
           aria-label={full ? undefined : `Account menu for ${name}`}
           className={cn(
-            "flex items-center gap-2 rounded-lg text-left transition-colors hover:bg-surface-2",
+            "flex items-center gap-2 rounded-lg border border-line bg-surface text-left shadow-pop transition-colors hover:bg-surface-2",
             full ? "w-full p-2" : "min-h-9 min-w-9 justify-center p-1 tf-touch-target",
           )}
         >

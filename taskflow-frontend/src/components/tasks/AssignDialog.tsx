@@ -101,7 +101,7 @@ export function AssignDialog({
                 {isPending ? (
                   <Loader2 className="size-4 shrink-0 animate-spin text-ink-3" />
                 ) : isAssigned ? (
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-brand-ink">
                     <Check className="size-3" />
                   </span>
                 ) : (

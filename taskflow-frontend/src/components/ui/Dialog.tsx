@@ -27,7 +27,7 @@ export function Dialog({
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
       <RDialog.Portal>
-        <RDialog.Overlay className="tf-neo-brutal fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] data-[state=open]:animate-[tf-fade-in_0.15s_ease-out]" />
+        <RDialog.Overlay className="tf-neo-brutal tf-dialog-overlay fixed inset-0 z-40 data-[state=open]:animate-[tf-fade-in_0.15s_ease-out]" />
         <RDialog.Content
           className={cn(
             "tf-neo-brutal fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 tf-pop-in",
@@ -43,7 +43,7 @@ export function Dialog({
             <RDialog.Close asChild>
               <button
                 aria-label="Close"
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
+                className="flex size-11 shrink-0 items-center justify-center text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink sm:size-8"
               >
                 <X className="size-4" />
               </button>

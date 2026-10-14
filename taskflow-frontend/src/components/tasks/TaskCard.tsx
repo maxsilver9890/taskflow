@@ -36,7 +36,7 @@ export function TaskCard({
     <div
       {...dragHandleProps}
       className={cn(
-        "group relative flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-sm transition-shadow",
+        "group relative flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-pop transition-shadow",
         "hover:border-line-strong hover:shadow-pop",
         isDragging && "rotate-1 opacity-90 shadow-pop",
       )}

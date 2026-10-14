@@ -1,12 +1,9 @@
 import { cn, initials } from "@/lib/utils";
 
 const PALETTE = [
-  "bg-[#0d6b5e] text-white",
-  "bg-[#2563eb] text-white",
-  "bg-[#b7791f] text-white",
-  "bg-[#7c3aed] text-white",
-  "bg-[#be185d] text-white",
-  "bg-[#0e7490] text-white",
+  "bg-brand text-brand-ink",
+  "bg-surface-2 text-ink",
+  "bg-ink text-canvas",
 ];
 
 function colorFor(seed: string): string {

@@ -1,87 +1,88 @@
 @import "tailwindcss";
 
 /*
- * TaskFlow design tokens — shared across the marketing site and the
- * authenticated app. Light mode is the sand/cream register, dark mode is
- * the deep-navy register; coral is the one accent color, used for primary
- * actions and status emphasis, not decoration.
+ * TaskFlow design tokens — paper, ink, and acid yellow in light mode, with
+ * a charcoal-and-paper dark register. Authenticated UI components consume
+ * these shared values so both themes keep the same Neo-Brutalist language.
  *
- * Every component in src/components reads these variables (never a raw
- * hex), so retheming the whole product is a one-file change.
+ * Shared UI components consume these semantic values; keep color decisions
+ * centralized here so both theme registers stay visually coherent.
  */
 :root {
-  --canvas: #f5efe4;
-  --surface: #ffffff;
-  --surface-2: #efe6d6;
-  --line: #e1d5c0;
-  --line-strong: #cdbd9f;
-  --ink: #241c14;
-  --ink-2: #5a4f41;
-  --ink-3: #8a7c68;
-  --brand: #c64a32;
-  --brand-hover: #a83d28;
-  --brand-ink: #ffffff;
-  --brand-soft: #f6e2db;
-  --focus: #c64a32;
+  --canvas: #f8f4e8;
+  --surface: #fffdf7;
+  --surface-2: #efe9dc;
+  --line: #090909;
+  --line-strong: #090909;
+  --ink: #090909;
+  --ink-2: #33312b;
+  --ink-3: #625e52;
+  --brand: #d2e823;
+  --brand-hover: #c3d91d;
+  --brand-ink: #090909;
+  --brand-soft: #d2e823;
+  --focus: #090909;
+  --overlay: rgb(9 9 9 / 0.55);
   --danger: #b42318;
   --danger-soft: #fdeceb;
 
-  --s-todo: #7a7265;
-  --s-progress: #2563eb;
-  --s-review: #b7791f;
-  --s-done: #2f7a4f;
-  --s-todo-soft: #ece4d6;
-  --s-progress-soft: #e4ecfd;
-  --s-review-soft: #fbf0d9;
-  --s-done-soft: #e1f0e5;
+  --s-todo: #33312b;
+  --s-progress: #090909;
+  --s-review: #594900;
+  --s-done: #283000;
+  --s-todo-soft: #efe9dc;
+  --s-progress-soft: #d2e823;
+  --s-review-soft: #f1e8c7;
+  --s-done-soft: #e8edc5;
 
-  --p-low: #8a7c68;
-  --p-medium: #2563eb;
-  --p-high: #c2410c;
-  --p-urgent: #b91c1c;
+  --p-low: #625e52;
+  --p-medium: #33312b;
+  --p-high: #755300;
+  --p-urgent: #9a3026;
 
-  --shadow-pop: 0 12px 32px -8px rgb(36 28 20 / 0.18), 0 2px 6px rgb(36 28 20 / 0.08);
+  --shadow-pop: 4px 4px 0 #090909;
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --canvas: #0b2030;
-  --surface: #0f2736;
-  --surface-2: #142e3f;
-  --line: #244459;
-  --line-strong: #345a70;
-  --ink: #f0e5d4;
-  --ink-2: #c9bba3;
-  --ink-3: #8fa0ac;
-  --brand: #e2705a;
-  --brand-hover: #ec8a76;
-  --brand-ink: #1a0c08;
-  --brand-soft: #2c2019;
-  --focus: #e2705a;
+  --canvas: #171714;
+  --surface: #24241f;
+  --surface-2: #333229;
+  --line: #f8f4e8;
+  --line-strong: #f8f4e8;
+  --ink: #f8f4e8;
+  --ink-2: #e0dccf;
+  --ink-3: #b8b2a1;
+  --brand: #d2e823;
+  --brand-hover: #e1f23c;
+  --brand-ink: #090909;
+  --brand-soft: #4a4c1a;
+  --focus: #d2e823;
+  --overlay: rgb(0 0 0 / 0.72);
   --danger: #f3776b;
   --danger-soft: #3a1c1a;
 
-  --s-todo: #94a3b8;
-  --s-progress: #6b9bff;
-  --s-review: #e0a53d;
-  --s-done: #4ec97a;
-  --s-todo-soft: #1c3240;
-  --s-progress-soft: #182a4d;
-  --s-review-soft: #382b12;
-  --s-done-soft: #12301d;
+  --s-todo: #e0dccf;
+  --s-progress: #090909;
+  --s-review: #f1e8c7;
+  --s-done: #d2e823;
+  --s-todo-soft: #333229;
+  --s-progress-soft: #d2e823;
+  --s-review-soft: #4b4120;
+  --s-done-soft: #424818;
 
-  --p-low: #94a3b8;
-  --p-medium: #6b9bff;
-  --p-high: #f08a4b;
-  --p-urgent: #f47a7a;
+  --p-low: #b8b2a1;
+  --p-medium: #e0dccf;
+  --p-high: #f1cf65;
+  --p-urgent: #ff8d7e;
 
-  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
+  --shadow-pop: 4px 4px 0 #d2e823;
   color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Dela Gothic One", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   --color-canvas: var(--canvas);
@@ -261,46 +262,19 @@ h3 {
   }
 }
 
-/* Neo-Brutalist workspace styling, scoped to the authenticated app and its
-   Radix portals so marketing and auth pages retain their existing treatment. */
+/* Shared Neo-Brutalist styling for the workspace and its Radix portals. */
 .tf-neo-brutal {
-  --canvas: #f8f4e8;
-  --surface: #fffdf7;
-  --surface-2: #efe9dc;
-  --line: #09090b;
-  --line-strong: #09090b;
-  --ink: #09090b;
-  --ink-2: #33312b;
-  --ink-3: #625e52;
-  --brand: #d2e823;
-  --brand-hover: #c3d91d;
-  --brand-ink: #09090b;
-  --brand-soft: #d2e823;
-  --focus: #09090b;
-  --shadow-pop: 4px 4px 0 #09090b;
-  --tf-hard-ink: #09090b;
-  --tf-button-bg: #09090b;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Dela Gothic One", ui-sans-serif, system-ui, sans-serif;
+  --tf-hard-ink: var(--line);
+  --tf-button-bg: #090909;
   color: var(--ink);
   font-family: "Space Grotesk", var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root[data-theme="dark"] .tf-neo-brutal {
-  --canvas: #0b2030;
-  --surface: #0f2736;
-  --surface-2: #142e3f;
-  --line: #d2e823;
-  --line-strong: #d2e823;
-  --ink: #f8f4e8;
-  --ink-2: #dfd7c8;
-  --ink-3: #b9b09f;
-  --brand: #d2e823;
-  --brand-hover: #e1f23c;
-  --brand-ink: #09090b;
-  --brand-soft: #d2e823;
-  --focus: #d2e823;
-  --shadow-pop: 4px 4px 0 #050a0f;
-  --tf-hard-ink: #d2e823;
-  --tf-button-bg: #09090b;
+  --tf-hard-ink: #f8f4e8;
+  --tf-button-bg: #090909;
 }
 
 .tf-neo-brutal :is(h1, h2, h3, .font-display) {
@@ -332,6 +306,21 @@ h3 {
   transition: transform 100ms ease, box-shadow 100ms ease;
 }
 
+.tf-dialog-overlay {
+  background: var(--overlay);
+}
+
+.tf-neo-brutal .tf-neo-brutal-card {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-pop);
+}
+
+.tf-neo-brutal .tf-neo-brutal-lane {
+  border: 2px solid var(--tf-hard-ink);
+  border-radius: 0;
+}
+
 .tf-neo-brutal :is(.rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md).border.border-line.bg-surface:hover {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 var(--tf-hard-ink);
@@ -354,11 +343,11 @@ h3 {
 }
 
 .tf-project-featured :is(.text-ink, .text-ink-2, .text-ink-3, .text-brand) {
-  color: #09090b;
+  color: #090909;
 }
 
 .tf-project-featured .border-line {
-  border-color: #09090b;
+  border-color: #090909;
 }
 
 .tf-neo-brutal .bg-brand-soft {

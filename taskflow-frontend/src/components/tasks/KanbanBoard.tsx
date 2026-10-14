@@ -69,7 +69,7 @@ function Column({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-[120px] flex-1 flex-col gap-2 rounded-xl border border-line bg-surface-2/50 p-2 transition-colors",
+          "tf-neo-brutal-lane flex min-h-[120px] flex-1 flex-col gap-2 rounded-xl border border-line bg-surface-2/50 p-2 transition-colors",
           isOver && "border-brand/40 bg-brand-soft/40",
         )}
       >
