@@ -981,3 +981,56 @@ h3 {
   .tf-task-form-layout { grid-template-columns: minmax(0, 1fr); }
   .tf-task-form-summary { order: -1; }
 }
+
+/* Full-page task creation follows the supplied dashboard workflow reference. */
+.tf-create-task-page { min-width: 0; }
+.tf-create-task-head { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; padding: clamp(1.25rem, 3vw, 2.5rem); border-bottom: 2px solid var(--tf-hard-ink); background: var(--surface); }
+.tf-create-task-head h1 { max-width: 15ch; margin: 0.7rem 0 0; color: var(--ink); font: 400 clamp(2.2rem, 6.4vw, 5rem)/0.95 "Dela Gothic One", sans-serif; letter-spacing: -0.06em; }
+.tf-create-task-head > div:first-child > p { margin: 0.7rem 0 0; color: var(--ink-2); font-size: 0.9rem; }
+.tf-create-task-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 0.5rem; }
+.tf-create-task-back, .tf-create-task-context-back { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.55rem; color: var(--ink); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-decoration: none; text-transform: uppercase; }
+.tf-create-task-back:hover, .tf-create-task-context-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+.tf-create-task-context-back { margin-left: 1rem; color: var(--ink-3); }
+.tf-create-task-mark { display: grid; width: 6.5rem; height: 6.5rem; flex: 0 0 auto; place-items: center; align-content: center; gap: 0.35rem; border: 2px solid var(--tf-hard-ink); background: var(--brand); box-shadow: 5px 5px 0 var(--tf-hard-ink); }
+.tf-create-task-mark span { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.13em; }
+.tf-create-task-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(15rem, 0.9fr); align-items: start; gap: clamp(1rem, 2.2vw, 2rem); max-width: 1440px; margin: 0 auto; padding: clamp(1rem, 2.3vw, 2rem); }
+.tf-create-task-form-panel { min-width: 0; padding: clamp(1rem, 2.2vw, 2rem); border: 2px solid var(--tf-hard-ink); background: var(--surface); box-shadow: 6px 6px 0 var(--tf-hard-ink); }
+.tf-create-task-section-title { display: grid; gap: 0.55rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--tf-hard-ink); }
+.tf-create-task-section-title span, .tf-create-task-aside-label { color: var(--ink-3); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; }
+.tf-create-task-section-title h2 { margin: 0; color: var(--ink); font: 400 clamp(1.15rem, 2vw, 1.55rem)/1.2 "Dela Gothic One", sans-serif; text-transform: uppercase; }
+.tf-create-task-form { display: grid; gap: 1.3rem; }
+.tf-create-task-form > div > label, .tf-create-task-fields-grid label { color: var(--ink); font-size: 0.69rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.tf-create-task-form :is(input, textarea, select) { min-height: 2.9rem; border: 2px solid var(--tf-hard-ink); border-radius: 0; background: var(--surface); box-shadow: 2px 2px 0 var(--tf-hard-ink); }
+.tf-create-task-form textarea { min-height: 7rem; }
+.tf-create-task-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.tf-create-task-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem; margin-top: 0.25rem; }
+.tf-create-task-aside { display: grid; gap: 1rem; }
+.tf-create-task-preview, .tf-create-task-project-card { min-width: 0; padding: 1.25rem; border: 2px solid var(--tf-hard-ink); background: var(--tf-hard-ink); color: var(--surface); box-shadow: 4px 4px 0 var(--tf-hard-ink); }
+.tf-create-task-preview-icon { display: grid; width: 2.8rem; height: 2.8rem; place-items: center; margin-top: 1.1rem; border: 2px solid var(--tf-hard-ink); background: var(--brand); color: var(--ink); }
+.tf-create-task-preview h2, .tf-create-task-project-card h3 { margin: 0.9rem 0 0; color: var(--surface); font: 400 1.1rem/1.2 "Dela Gothic One", sans-serif; overflow-wrap: anywhere; }
+.tf-create-task-preview p, .tf-create-task-project-card p { margin: 0.65rem 0 0; color: #ded9cc; font-size: 0.8rem; line-height: 1.55; overflow-wrap: anywhere; }
+.tf-create-task-preview-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.tf-create-task-preview-meta span { padding: 0.35rem 0.5rem; border: 1px solid var(--surface); color: var(--brand); font-size: 0.61rem; font-weight: 700; text-transform: uppercase; }
+.tf-create-task-project-card { background: var(--brand); color: var(--ink); }
+.tf-create-task-project-card .tf-create-task-aside-label { color: var(--ink); }
+.tf-create-task-project-card h3 { color: var(--ink); }
+.tf-create-task-project-card p { color: var(--ink-2); }
+.tf-create-task-date { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--tf-hard-ink); font-size: 0.72rem; font-weight: 700; }
+.tf-create-task-note { margin: 0; padding: 0.75rem 0.25rem; color: var(--ink-3); font-size: 0.72rem; line-height: 1.5; }
+@media (max-width: 900px) {
+  .tf-create-task-layout { grid-template-columns: minmax(0, 1fr); }
+  .tf-create-task-aside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tf-create-task-note { grid-column: 1 / -1; }
+}
+@media (max-width: 639px) {
+  .tf-create-task-head { align-items: start; }
+  .tf-create-task-head h1 { font-size: clamp(2.2rem, 10vw, 3.6rem); }
+  .tf-create-task-mark { width: 4rem; height: 4rem; }
+  .tf-create-task-mark svg { width: 1.5rem; height: 1.5rem; }
+  .tf-create-task-context-back { margin: 0; }
+  .tf-create-task-aside { grid-template-columns: minmax(0, 1fr); }
+  .tf-create-task-fields-grid { grid-template-columns: minmax(0, 1fr); }
+  .tf-create-task-fields-grid > div { grid-column: 1; }
+  .tf-create-task-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tf-create-task-actions > button { width: 100%; white-space: normal; }
+}

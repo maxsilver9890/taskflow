@@ -8,7 +8,6 @@ import {
   ClipboardList, FolderKanban, Plus,
 } from "lucide-react";
 
-import { TaskFormDialog } from "@/components/tasks/TaskFormDialog";
 import { ProjectFormDialog } from "@/components/projects/ProjectFormDialog";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -36,7 +35,6 @@ export default function DashboardPage() {
   const projects = useAllProjects();
   const members = useOrgMembers();
   const [projectFormOpen, setProjectFormOpen] = useState(false);
-  const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const selectedProject = projects.data?.find((project) => project.id === selectedProjectId) ?? projects.data?.[0];
   const projectTasks = useProjectTasks(selectedProject?.id ?? "");
@@ -74,9 +72,9 @@ export default function DashboardPage() {
                 {dueTodayCount > 0 && <> <strong className="bg-brand px-1 text-ink">{dueTodayCount} due today</strong>.</>}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Button onClick={() => setTaskFormOpen(true)} className="min-h-12 rounded-none border-2 border-line bg-ink px-5 font-bold uppercase text-brand shadow-pop hover:bg-ink-2">
+                <Link href={selectedProject ? `/tasks/new?projectId=${encodeURIComponent(selectedProject.id)}&from=dashboard` : "/tasks/new?from=dashboard"} className="tf-neo-brutal-button inline-flex min-h-12 items-center justify-center gap-2 rounded-none border-2 border-line bg-ink px-5 font-bold uppercase text-brand shadow-pop transition-colors hover:bg-ink-2 focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">
                   <Plus className="size-4" /> Create new task
-                </Button>
+                </Link>
                 <Link href="/team" className="inline-flex min-h-12 items-center justify-center gap-2 border-2 border-line bg-white px-5 font-bold uppercase shadow-pop transition-transform hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none">
                   Invite team <ArrowRight className="size-4" />
                 </Link>
@@ -135,7 +133,7 @@ export default function DashboardPage() {
                       {columnTasks.slice(0, 4).map((task) => <TaskCard key={task.id} task={task} />)}
                       {columnTasks.length === 0 && <p className="border-2 border-dashed border-line/50 p-4 text-center text-xs text-ink-3">No tasks here yet</p>}
                       {columnTasks.length > 4 && <Link href={`/tasks?projectId=${selectedProject.id}`} className="border-2 border-line bg-white p-3 text-center text-xs font-bold uppercase shadow-pop hover:bg-brand">+{columnTasks.length - 4} more tasks</Link>}
-                      {status === "TODO" && <button onClick={() => setTaskFormOpen(true)} className="min-h-11 border-2 border-dashed border-line/60 p-3 text-left text-xs font-bold uppercase text-ink-3 hover:border-line hover:bg-brand hover:text-ink">+ Add task</button>}
+                      {status === "TODO" && <Link href={`/tasks/new?projectId=${encodeURIComponent(selectedProject.id)}&status=${status}&from=dashboard`} className="flex min-h-11 items-center border-2 border-dashed border-line/60 p-3 text-left text-xs font-bold uppercase text-ink-3 hover:border-line hover:bg-brand hover:text-ink">+ Add task</Link>}
                     </div>
                   </section>;
                 })}
@@ -182,7 +180,6 @@ export default function DashboardPage() {
         </aside>
       </div>
 
-      <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} defaultProjectId={selectedProject?.id} />
       <ProjectFormDialog open={projectFormOpen} onOpenChange={setProjectFormOpen} />
     </div>
   );

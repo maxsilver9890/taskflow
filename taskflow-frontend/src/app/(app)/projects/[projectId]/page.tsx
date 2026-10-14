@@ -35,7 +35,6 @@ export default function ProjectDetailPage() {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [assigningTask, setAssigningTask] = useState<Task | null>(null);
-  const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("TODO");
   const [taskFormDirty, setTaskFormDirty] = useState(false);
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
   const [leaveAfterTaskClose, setLeaveAfterTaskClose] = useState(false);
@@ -76,9 +75,7 @@ export default function ProjectDetailPage() {
   }
 
   function openAddTask(status: TaskStatus) {
-    setEditingTask(null);
-    setDefaultStatus(status);
-    setTaskFormOpen(true);
+    router.push(`/tasks/new?projectId=${encodeURIComponent(projectId)}&status=${status}&from=project`);
   }
   function openEditTask(task: Task) {
     setEditingTask(task);
@@ -196,7 +193,6 @@ export default function ProjectDetailPage() {
         onOpenChange={setTaskFormOpen}
         task={editingTask}
         defaultProjectId={projectId}
-        defaultStatus={editingTask ? undefined : defaultStatus}
         onDirtyChange={setTaskFormDirty}
       />
 

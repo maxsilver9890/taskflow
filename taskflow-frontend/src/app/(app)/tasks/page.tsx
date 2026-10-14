@@ -93,8 +93,7 @@ function TasksPageInner() {
   const deleteTask = useDeleteTask();
 
   function openCreate() {
-    setEditingTask(null);
-    setTaskFormOpen(true);
+    router.push("/tasks/new?from=tasks");
   }
   function openEdit(task: Task) {
     setEditingTask(task);
