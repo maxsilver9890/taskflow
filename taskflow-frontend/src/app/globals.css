@@ -179,6 +179,11 @@ h3 {
     transform: none;
   }
 }
+
+@keyframes tf-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
 @keyframes tf-slide-in {
   from {
     transform: translateX(24px);
