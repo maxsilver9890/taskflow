@@ -376,6 +376,31 @@ export interface Comment {
   author: AssigneeUser;
 }
 
+/** Persisted comment activity attached to a task in the active organization. */
+export interface CommentActivity {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  deletedByName: string | null;
+  author: { id: string; name: string };
+  task: {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    assignments: { user: { id: string; name: string } }[];
+    project: { id: string; name: string };
+  };
+}
+
+export interface CommentActivityResponse {
+  data: CommentActivity[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface CreateCommentInput {
   content: string;
 }

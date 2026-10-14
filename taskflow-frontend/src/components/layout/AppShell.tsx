@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Building2, Check, ChevronsUpDown, LayoutDashboard, ListChecks, Loader2, LogOut, Settings, Users } from "lucide-react";
+import { Bell, Building2, Check, ChevronsUpDown, LayoutDashboard, ListChecks, Loader2, LogOut, MessageSquareText, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -22,6 +22,7 @@ const NAV = [
   { href: "/projects", label: "Projects", mobileLabel: "Projects", icon: ListChecks },
   { href: "/tasks", label: "All tasks", mobileLabel: "Tasks", icon: ListChecks },
   { href: "/team", label: "Team", mobileLabel: "Team", icon: Users },
+  { href: "/activity", label: "Activity", mobileLabel: "Activity", icon: MessageSquareText },
   { href: "/profile#organizations", label: "Organizations", mobileLabel: "Orgs", icon: Building2 },
 ] as const;
 

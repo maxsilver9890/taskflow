@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Dialog } from "@/components/ui/Dialog";
 import { FieldError, Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
@@ -20,52 +19,27 @@ import { qk } from "@/lib/query-keys";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDueDate, pluralize } from "@/lib/utils";
 
-function InviteMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<OrgRole>("MEMBER");
-  const [fieldError, setFieldError] = useState("");
-  const queryClient = useQueryClient();
-  const { orgId } = useAuth();
-  const invite = useMutation({
-    mutationFn: () => organizationsApi.invite({ email: email.trim(), role }),
-    onSuccess: () => {
-      toast.success("Invitation sent");
-      void queryClient.invalidateQueries({ queryKey: qk.org.members(orgId) });
-      void queryClient.invalidateQueries({ queryKey: qk.org.detail(orgId) });
-      setEmail("");
-      setRole("MEMBER");
-      onOpenChange(false);
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFieldError("Enter a valid email address.");
-      return;
-    }
-    setFieldError("");
-    invite.mutate();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="Invite a team member" description="They’ll receive an invitation to join this organization."
-      footer={<><Button variant="secondary" onClick={() => onOpenChange(false)} disabled={invite.isPending}>Cancel</Button><Button onClick={submit} loading={invite.isPending}>Send invitation</Button></>}>
-      <form id="invite-member-form" onSubmit={submit} className="space-y-4">
-        <div><Label htmlFor="invite-email">Email address</Label><Input id="invite-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.com" autoFocus disabled={invite.isPending} /><FieldError>{fieldError}</FieldError></div>
-        <div><Label htmlFor="invite-role">Role</Label><select id="invite-role" value={role} onChange={(event) => setRole(event.target.value as OrgRole)} disabled={invite.isPending} className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15"><option value="MEMBER">Member</option><option value="ORG_ADMIN">Org admin</option></select></div>
-      </form>
-    </Dialog>
-  );
-}
-
 export default function TeamPage() {
   const org = useOrganization();
   const { isAdmin, orgId } = useAuth();
   const { members, total, isLoading, query } = useOrgMembers();
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<OrgRole>("MEMBER");
+  const [inviteError, setInviteError] = useState("");
   const queryClient = useQueryClient();
+  const invite = useMutation({
+    mutationFn: () => organizationsApi.invite({ email: inviteEmail.trim(), role: inviteRole }),
+    onSuccess: () => {
+      toast.success("Invitation sent");
+      void queryClient.invalidateQueries({ queryKey: qk.org.members(orgId) });
+      void queryClient.invalidateQueries({ queryKey: qk.org.detail(orgId) });
+      void queryClient.invalidateQueries({ queryKey: qk.org.invitations(orgId) });
+      setInviteEmail("");
+      setInviteRole("MEMBER");
+      setInviteError("");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: OrgRole }) => organizationsApi.updateMemberRole(userId, role),
     onSuccess: () => { toast.success("Member role updated"); void queryClient.invalidateQueries({ queryKey: qk.org.members(orgId) }); },
@@ -82,10 +56,18 @@ export default function TeamPage() {
     enabled: isAdmin && !!orgId,
   });
   const invitationRows = invitations.data?.data ?? [];
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const updateNow = () => setNow(Date.now());
+    updateNow();
+    const timer = window.setInterval(updateNow, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const pendingInvitations = invitationRows.filter((invitation) =>
     !invitation.acceptedAt &&
     !invitation.cancelledAt &&
-    !invitation.rejectedAt
+    !invitation.rejectedAt &&
+    now !== null && (!invitation.expiresAt || new Date(invitation.expiresAt).getTime() > now)
   );
   const rejectedInvitations = invitationRows.filter((invitation) =>
     Boolean(invitation.rejectedAt) && !invitation.cancelledAt && !invitation.acceptedAt
@@ -110,6 +92,16 @@ export default function TeamPage() {
     removeMutation.mutate(userId);
   }
 
+  function submitInvite(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!inviteEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+      setInviteError("Enter a valid email address.");
+      return;
+    }
+    setInviteError("");
+    invite.mutate();
+  }
+
   return (
     <div className="tf-team-page">
       <header className="tf-team-head">
@@ -118,8 +110,30 @@ export default function TeamPage() {
           <h1>TEAM MEMBERS</h1>
           <p>{org.data ? pluralize(org.data.memberCount, "member") : "Your organization roster"}</p>
         </div>
-        {isAdmin && <Button size="md" onClick={() => setInviteOpen(true)}><UserPlus className="size-4" /> Invite member</Button>}
+        {isAdmin && <Button size="md" onClick={() => document.getElementById("team-invite-email")?.focus()}><UserPlus className="size-4" /> Invite member</Button>}
       </header>
+      {isAdmin && (
+        <form className="tf-team-invite-form" onSubmit={submitInvite}>
+          <div className="tf-team-invite-field">
+            <Label htmlFor="team-invite-email">Email address</Label>
+            <Input id="team-invite-email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="teammate@company.com" disabled={invite.isPending} />
+            <FieldError>{inviteError}</FieldError>
+          </div>
+          <div className="tf-team-invite-role">
+            <Label htmlFor="team-invite-role">Organization role</Label>
+            <select id="team-invite-role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as OrgRole)} disabled={invite.isPending}>
+              <option value="MEMBER">Member</option><option value="ORG_ADMIN">Org admin</option>
+            </select>
+          </div>
+          <Button type="submit" loading={invite.isPending}>Send invitation</Button>
+        </form>
+      )}
+      <section className="tf-team-snapshot" aria-label="Organization team summary">
+        <div><span>ROSTER</span><strong>{String(total).padStart(2, "0")}</strong><small>{pluralize(total, "active member")}</small></div>
+        <div><span>ORG ADMINS</span><strong>{String(members.filter((member) => member.role === "ORG_ADMIN").length).padStart(2, "0")}</strong><small>People with admin access</small></div>
+        <div><span>INVITATIONS</span><strong>{String(pendingInvitations.length).padStart(2, "0")}</strong><small>Awaiting a response</small></div>
+        <p>Clear roles. Shared ownership. One workspace.</p>
+      </section>
       <div className="tf-team-content p-4 md:p-6">
         <div className="tf-team-section-head"><h2>IN THIS ORGANIZATION</h2><span>{String(total).padStart(2, "0")} MEMBERS</span></div>
         {query.isError ? <ErrorState error={query.error} onRetry={() => query.refetch()} /> : isLoading ? (
@@ -207,7 +221,6 @@ export default function TeamPage() {
           </div>
         </div>
       ) : null}
-      {isAdmin && <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} />}
     </div>
   );
 }

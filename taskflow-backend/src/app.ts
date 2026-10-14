@@ -18,6 +18,7 @@ import { setEmailQueue } from "./tasks/task.controller.js";
 import { createTaskRouter } from "./tasks/task.routes.js";
 import { createUserRouter } from "./users/user.routes.js";
 import { createNotificationRouter } from "./notifications/notification.routes.js";
+import { createActivityRouter } from "./activity/activity.routes.js";
 
 export function createApp(redisConnection: IORedis) {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp(redisConnection: IORedis) {
   app.use("/organizations", createOrganizationRouter());
   app.use("/users", createUserRouter());
   app.use("/notifications", createNotificationRouter());
+  app.use("/activity", createActivityRouter());
   app.use("/projects", createProjectRouter());
   app.use("/tasks", createTaskRouter());
   // Comments are nested under /tasks/:taskId/comments — see comment.routes.ts.

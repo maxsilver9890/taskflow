@@ -855,6 +855,18 @@ h3 {
 }
 .tf-team-head h1 { margin: 0.45rem 0 0; color: var(--ink); font: 400 clamp(2rem, 5.5vw, 4.5rem)/0.95 "Dela Gothic One", sans-serif; letter-spacing: -0.055em; }
 .tf-team-head p { margin: 0.55rem 0 0; color: var(--ink-3); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.tf-team-snapshot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(12rem, 1.4fr); gap: 0; margin: 1.5rem 1.5rem 0; border: 2px solid var(--tf-hard-ink); background: var(--surface); box-shadow: 4px 4px 0 var(--tf-hard-ink); }
+.tf-team-snapshot > div { display: grid; min-width: 0; gap: 0.2rem; padding: 0.85rem 1rem; border-right: 1px solid var(--tf-hard-ink); }
+.tf-team-snapshot > div:nth-child(2) { background: var(--brand); }
+.tf-team-snapshot > div > span { color: var(--ink-3); font: 700 0.6rem "IBM Plex Mono", monospace; letter-spacing: 0.1em; }
+.tf-team-snapshot > div > strong { color: var(--ink); font: 400 1.65rem/1 "Dela Gothic One", sans-serif; }
+.tf-team-snapshot > div > small { color: var(--ink-2); font-size: 0.68rem; }
+.tf-team-snapshot > p { display: flex; align-items: center; margin: 0; padding: 0.85rem 1rem; color: var(--ink); font: 400 0.9rem "Dela Gothic One", sans-serif; text-transform: uppercase; }
+.tf-team-invite-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 15rem) auto; align-items: end; gap: 0.85rem; margin: 1.25rem 1.5rem 0; padding: 1rem; border: 2px solid var(--tf-hard-ink); background: var(--surface); box-shadow: 3px 3px 0 var(--tf-hard-ink); }
+.tf-team-invite-field, .tf-team-invite-role { min-width: 0; }
+.tf-team-invite-form label { color: var(--ink); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.tf-team-invite-form input, .tf-team-invite-form select { min-height: 2.9rem; border: 2px solid var(--tf-hard-ink); background: var(--surface); box-shadow: 2px 2px 0 var(--tf-hard-ink); }
+.tf-team-invite-form select { width: 100%; padding: 0 0.65rem; color: var(--ink); }
 .tf-team-content { min-width: 0; }
 .tf-team-section-head { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--tf-hard-ink); }
 .tf-team-section-head h2 { margin: 0; color: var(--ink); font: 400 1.2rem/1.1 "Dela Gothic One", sans-serif; letter-spacing: -0.04em; }
@@ -904,6 +916,8 @@ h3 {
 @media (max-width: 639px) {
   .tf-team-head { align-items: stretch; flex-direction: column; }
   .tf-team-head > .tf-neo-brutal-button { align-self: stretch; }
+  .tf-team-invite-form { grid-template-columns: minmax(0, 1fr); margin: 1rem 1rem 0; }
+  .tf-team-invite-form > button { width: 100%; }
   .tf-team-section-head { align-items: start; flex-direction: column; }
   .tf-team-card { grid-column: span 12; }
   .tf-team-invitations { padding-inline: 1rem; }
@@ -977,6 +991,52 @@ h3 {
 .tf-task-form-summary dl > div { display: flex; justify-content: space-between; gap: 0.65rem; padding-top: 0.55rem; border-top: 1px solid #ffffff45; }
 .tf-task-form-summary dt { color: #c8c3b6; font-size: 0.68rem; }
 .tf-task-form-summary dd { max-width: 62%; margin: 0; color: var(--brand); font-size: 0.68rem; font-weight: 700; text-align: right; text-transform: uppercase; overflow-wrap: anywhere; }
+/* Comment activity feed, designed as a persisted discussion timeline. */
+.tf-activity-filterbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 1rem; border: 2px solid var(--tf-hard-ink); background: var(--brand); box-shadow: 3px 3px 0 var(--tf-hard-ink); }
+.tf-activity-filterbar > div { display: flex; align-items: center; gap: 0.75rem; }
+.tf-activity-filter-label { padding: 0.3rem 0.45rem; border: 2px solid var(--tf-hard-ink); background: var(--surface); font: 700 0.6rem "IBM Plex Mono", monospace; letter-spacing: 0.1em; }
+.tf-activity-filterbar strong { font: 400 0.92rem "Dela Gothic One", sans-serif; text-transform: uppercase; }
+.tf-activity-filterbar > span { color: var(--ink-2); font-size: 0.72rem; font-weight: 700; }
+.tf-comment-activity-list { display: grid; gap: 0.85rem; }
+.tf-comment-activity-card { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 0.85rem; padding: 1rem; border: 2px solid var(--tf-hard-ink); background: var(--surface); box-shadow: 4px 4px 0 var(--tf-hard-ink); }
+.tf-comment-activity-card.is-deleted { background: var(--surface-2); }
+.tf-comment-activity-avatar { padding-top: 0.1rem; }
+.tf-comment-activity-body { min-width: 0; }
+.tf-comment-activity-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.55rem; }
+.tf-comment-activity-meta strong { color: var(--ink); font-size: 0.9rem; font-weight: 700; }
+.tf-comment-activity-meta > span { color: var(--ink-3); font-size: 0.78rem; }
+.tf-comment-activity-meta time { margin-left: auto; color: var(--ink-3); font: 700 0.62rem "IBM Plex Mono", monospace; }
+.tf-comment-activity-task { margin: 0.35rem 0 0.7rem; color: var(--ink-2); font-size: 0.75rem; }
+.tf-comment-activity-task a { color: var(--ink); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.tf-comment-activity-card blockquote { margin: 0; padding: 0.8rem 0.9rem; border-left: 4px solid var(--tf-hard-ink); background: var(--canvas); color: var(--ink); font-size: 0.88rem; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.tf-comment-activity-card.is-deleted blockquote { color: var(--ink-3); font-style: italic; }
+.tf-comment-activity-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem 0.8rem; padding-top: 0.75rem; color: var(--ink-3); font-size: 0.65rem; }
+.tf-activity-status { padding: 0.2rem 0.4rem; border: 1px solid var(--tf-hard-ink); background: var(--surface-2); color: var(--ink); font: 700 0.58rem "IBM Plex Mono", monospace; text-transform: uppercase; }
+.tf-activity-status.status-in-progress, .tf-activity-status.status-review { background: var(--brand); }
+.tf-activity-status.status-done { background: var(--tf-hard-ink); color: var(--brand); }
+.tf-comment-open-link { margin-left: auto; color: var(--ink); font-size: 0.68rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.tf-activity-empty-link { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0.5rem 0.8rem; border: 2px solid var(--tf-hard-ink); background: var(--brand); color: var(--ink); font-weight: 700; box-shadow: 3px 3px 0 var(--tf-hard-ink); }
+.tf-activity-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding-top: 0.9rem; border-top: 2px solid var(--tf-hard-ink); color: var(--ink-3); font-size: 0.72rem; }
+.tf-activity-pagination > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.55rem; }
+.tf-activity-pagination > div > span { padding: 0 0.3rem; color: var(--ink); font-weight: 700; }
+
+@media (max-width: 900px) {
+  .tf-team-snapshot { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tf-team-snapshot > p { grid-column: 1 / -1; min-height: 3rem; border-top: 1px solid var(--tf-hard-ink); }
+}
+@media (max-width: 639px) {
+  .tf-team-snapshot { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1rem 1rem 0; }
+  .tf-team-snapshot > div:nth-child(2) { border-right: 0; }
+  .tf-team-snapshot > div:nth-child(3) { border-top: 1px solid var(--tf-hard-ink); }
+  .tf-team-snapshot > p { grid-column: auto; border-top: 1px solid var(--tf-hard-ink); border-left: 1px solid var(--tf-hard-ink); font-size: 0.72rem; }
+  .tf-activity-filterbar { align-items: flex-start; flex-direction: column; }
+  .tf-comment-activity-card { grid-template-columns: 2rem minmax(0, 1fr); gap: 0.55rem; padding: 0.75rem; }
+  .tf-comment-activity-meta time { width: 100%; margin-left: 0; }
+  .tf-comment-activity-footer { align-items: flex-start; flex-direction: column; }
+  .tf-comment-open-link { margin-left: 0; }
+  .tf-activity-pagination { align-items: flex-start; flex-direction: column; }
+  .tf-activity-pagination > div { width: 100%; justify-content: space-between; }
+}
 @media (max-width: 640px) {
   .tf-task-form-layout { grid-template-columns: minmax(0, 1fr); }
   .tf-task-form-summary { order: -1; }

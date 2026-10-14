@@ -28,8 +28,9 @@ export const openapiDocument = {
     { name: "Projects", description: "Project management" },
     { name: "Tasks", description: "Task management" },
     { name: "Jobs", description: "Background job status" },
-    { name: "Notifications", description: "Authenticated in-app notifications" }
-    ,{ name: "Organizations", description: "Organization membership and invitations" }
+    { name: "Notifications", description: "Authenticated in-app notifications" },
+    { name: "Activity", description: "Organization-scoped persisted task discussion activity" },
+    { name: "Organizations", description: "Organization membership and invitations" }
   ],
 
   components: {
@@ -476,6 +477,23 @@ export const openapiDocument = {
   },
 
   paths: {
+    "/activity/comments": {
+      get: {
+        tags: ["Activity"],
+        summary: "List comments and comment removals in the active organization",
+        description: "Returns persisted comment activity for tasks belonging to the authenticated organization. Requires a verified email and uses the organization in the authenticated access token.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "page", in: "query", required: false, schema: { type: "integer", minimum: 1, default: 1 } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 100, default: 30 } }
+        ],
+        responses: {
+          "200": { description: "Paginated comment activity with author, task, project, and assignment context" },
+          "401": { description: "Authentication required" },
+          "403": { description: "Verified email required" }
+        }
+      }
+    },
     "/notifications": {
       get: {
         tags: ["Notifications"],

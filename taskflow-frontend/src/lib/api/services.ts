@@ -3,6 +3,7 @@ import { api, apiWithAccessToken } from "./client";
 import type {
   AssignmentResult,
   Comment,
+  CommentActivityResponse,
   CreateCommentInput,
   CreateProjectInput,
   CreateTaskInput,
@@ -131,6 +132,11 @@ export const notificationsApi = {
   list: () => api<NotificationsResponse>("/notifications"),
   markRead: (id: string) => api<void>(`/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" }),
   markAllRead: () => api<void>("/notifications/read-all", { method: "POST" }),
+};
+
+export const activityApi = {
+  comments: (page = 1, limit = 30) =>
+    api<CommentActivityResponse>("/activity/comments", { query: { page, limit } }),
 };
 
 export const usersApi = {

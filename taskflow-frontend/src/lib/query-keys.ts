@@ -30,6 +30,9 @@ export const qk = {
   notifications: {
     all: () => ["notifications"] as const,
   },
+  activity: {
+    comments: (orgId: string | null, page: number, limit: number) => ["activity", orgId, "comments", page, limit] as const,
+  },
   comments: {
     ofTask: (taskId: string) => ["comments", "task", taskId] as const,
   },

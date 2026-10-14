@@ -47,8 +47,8 @@ export default function NotificationsPage() {
       <header className="tf-activity-head">
         <div>
           <span className="tf-projects-eyebrow">Workspace / Notifications</span>
-          <h1>ACTIVITY LOG</h1>
-          <p>Notifications saved for your TaskFlow account, grouped by date.</p>
+          <h1>NOTIFICATIONS</h1>
+          <p>Updates saved for your TaskFlow account, grouped by date.</p>
         </div>
         <div className="tf-activity-controls">
           <div className="tf-activity-count"><strong>{entries.length}</strong><span>Notifications</span></div>
