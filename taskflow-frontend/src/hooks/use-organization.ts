@@ -22,7 +22,7 @@ export function useOrganizationMemberships() {
     queryKey: qk.org.memberships(orgId),
     queryFn: () => organizationsApi.memberships(),
     staleTime: 60_000,
-    enabled: status === "authenticated" && !!orgId,
+    enabled: status === "authenticated",
   });
 }
 

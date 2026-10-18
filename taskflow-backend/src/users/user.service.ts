@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import type { PrismaClient } from "@prisma/client";
 
 import { env } from "../config/env.js";
-import { AppError, AuthErrors } from "../lib/errors.js";
+import { AuthErrors } from "../lib/errors.js";
 import * as UserData from "./user.data.js";
 import type { ChangePasswordBody, UpdateMeBody } from "./user.schemas.js";
 
@@ -18,19 +18,15 @@ type ProfileUser = {
 
 function toProfile(user: ProfileUser) {
   const membership = user.orgMemberships[0];
-  if (!membership) {
-    throw new AppError(403, "ORGANIZATION_REQUIRED", "Your account is not assigned to an organization.");
-  }
-
   return {
     id: user.id,
     name: user.name,
     email: user.email,
-    organization: {
+    ...(membership ? { organization: {
       id: membership.organization.id,
       name: membership.organization.name,
       role: membership.role
-    }
+    } } : {})
   };
 }
 
@@ -53,7 +49,8 @@ export async function listOrganizations(db: PrismaClient, userId: string) {
 }
 
 export async function updateMe(db: PrismaClient, userId: string, body: UpdateMeBody) {
-  return toProfile(await UserData.updateUserName(db, userId, body.name));
+  const user = await UserData.updateUserName(db, userId, body.name);
+  return { id: user.id, name: user.name, email: user.email };
 }
 
 export async function changePassword(db: PrismaClient, userId: string, body: ChangePasswordBody) {

@@ -23,7 +23,7 @@ const NAV = [
   { href: "/tasks", label: "All tasks", mobileLabel: "Tasks", icon: ListChecks },
   { href: "/team", label: "Team", mobileLabel: "Team", icon: Users },
   { href: "/activity", label: "Activity", mobileLabel: "Activity", icon: MessageSquareText },
-  { href: "/profile#organizations", label: "Organizations", mobileLabel: "Orgs", icon: Building2 },
+  { href: "/organizations", label: "Organizations", mobileLabel: "Orgs", icon: Building2 },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
