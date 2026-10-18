@@ -693,7 +693,7 @@ export async function firebaseExchange(
   });
 
   if (existingFirebaseUser) {
-    const membership = await db.orgMember.findFirst({
+    let membership = await db.orgMember.findFirst({
       where: { userId: existingFirebaseUser.id },
       orderBy: { createdAt: "asc" },
       select: {
@@ -703,7 +703,33 @@ export async function firebaseExchange(
       }
     });
 
-    if (!membership) throw AuthErrors.FORBIDDEN();
+    // A user may have deleted or left their last organization. Restore the
+    // sign-in path by giving that account a fresh workspace, as we do for a
+    // first-time Firebase registration. Without a membership the legacy
+    // token shape cannot be issued and the user would be locked out before
+    // reaching the organization recovery page.
+    if (!membership) {
+      const organizationName =
+        body.organizationName?.trim() || `${existingFirebaseUser.name}'s Workspace`;
+      membership = await db.$transaction(async (tx) => {
+        const organization = await tx.organization.create({
+          data: { name: organizationName },
+          select: { id: true, name: true }
+        });
+        await tx.orgMember.create({
+          data: {
+            userId: existingFirebaseUser.id,
+            organizationId: organization.id,
+            role: "ORG_ADMIN"
+          }
+        });
+        return {
+          organizationId: organization.id,
+          role: "ORG_ADMIN",
+          organization
+        };
+      });
+    }
 
     const tokens = await issueTokenPair(
       db,
