@@ -1,5 +1,6 @@
 
 import dotenv from "dotenv";
+import { parseCorsOrigins } from "./cors.js";
 
 dotenv.config();
 
@@ -142,4 +143,8 @@ export const env = {
   /** Frontend base URL used in links embedded in emails. */
   frontendUrl:
     process.env.FRONTEND_URL?.trim() || "http://localhost:3000",
+  corsOrigins: parseCorsOrigins(
+    process.env.CORS_ORIGINS,
+    process.env.FRONTEND_URL?.trim() || "http://localhost:3000"
+  ),
 } as const;

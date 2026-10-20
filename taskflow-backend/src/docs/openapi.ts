@@ -557,7 +557,7 @@ export const openapiDocument = {
             description: "Service is healthy"
           },
           "503": {
-            description: "Redis is unhealthy"
+            description: "PostgreSQL or Redis is unhealthy"
           }
         }
       }

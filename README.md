@@ -177,6 +177,7 @@ Edit taskflow-backend/.env with local-only values. The example is set up for a h
 | JWT_REFRESH_TTL_SECONDS | 604800 | Refresh-token lifetime in seconds. |
 | BCRYPT_ROUNDS | 12 | Password-hash cost factor; values below 12 are rejected. |
 | FRONTEND_URL | http://localhost:3000 in code | Frontend base URL used in email links; set explicitly for local and hosted environments. |
+| CORS_ORIGINS | Defaults to FRONTEND_URL | Optional comma-separated list of allowed browser origins, including scheme and optional port, without paths. |
 | EMAIL_PROVIDER | console | console for local email output or resend for external delivery. |
 | RESEND_API_KEY, RESEND_FROM_ADDRESS | Required for Resend | Backend-only API key and verified sender address. |
 | FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY | Required for Firebase exchange | Firebase Admin service-account fields used to verify ID tokens. The private key is a backend secret; store it with escaped newline sequences, which the code converts to real line breaks. |
@@ -300,7 +301,7 @@ Use npm run prisma:migrate (prisma migrate dev) only for local schema developmen
 
 ## API overview
 
-The API defaults to http://localhost:3000. The /health endpoint checks Redis availability and returns 200 or 503; it does not report a PostgreSQL health check. Interactive OpenAPI documentation is served at /api-docs, with its JSON document at /api-docs/openapi.json.
+The API defaults to http://localhost:3000. The /health endpoint checks both Redis and PostgreSQL and returns 200 only when both are available, otherwise 503. Its response reports each dependency as `ok` or `unavailable`. Interactive OpenAPI documentation is served at /api-docs, with its JSON document at /api-docs/openapi.json.
 
 | Area | Routes |
 | --- | --- |
@@ -387,7 +388,7 @@ A deployment using Vercel for the frontend, Render for the API/worker, and Supab
 4. **Migrations:** Include all migration files in the release artifact. On Render, use the API service's **Pre-Deploy Command** (available for paid web services, private services, and background workers) with `npm run prisma:deploy`. Render runs this command after the image/build is ready and before the new version starts serving traffic; a failure cancels the deploy and leaves the previous version running. Do not add migrations to the application start command or Docker `CMD`.
 5. **Frontend:** Deploy taskflow-frontend/ as a Next.js application. Set NEXT_PUBLIC_API_URL to the backend's public base URL and supply Firebase web configuration. These variables are compiled into the browser bundle at build time. Ensure backend FRONTEND_URL points to the frontend origin used in invitation and password-reset links.
 6. **Email:** Set EMAIL_PROVIDER=resend, RESEND_API_KEY, and RESEND_FROM_ADDRESS only when the Resend sender is configured and verified. Confirm delivery in the provider's own logs. Do not assume a test sender can send to arbitrary addresses.
-7. **CORS and health:** The API currently uses default cors() middleware without a configured origin allowlist. /health checks Redis only. These behaviors are in application code, not platform settings.
+7. **CORS and health:** Set `CORS_ORIGINS` to the comma-separated frontend origins that may call the API from browsers. If omitted, the API allows only `FRONTEND_URL`. `/health` checks both PostgreSQL and Redis; configure the Render health check path as `/health` so an unavailable dependency is reported as 503.
 
 Vercel, Render, and Supabase are deployment options and references in project documentation, not a claim that their dashboards are currently configured. Never use production as the test database. Run migrations through a controlled release step, not through prisma migrate dev, db push, a seed command, or application tests.
 

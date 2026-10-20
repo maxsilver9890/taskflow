@@ -19,9 +19,18 @@ import { createTaskRouter } from "./tasks/task.routes.js";
 import { createUserRouter } from "./users/user.routes.js";
 import { createNotificationRouter } from "./notifications/notification.routes.js";
 import { createActivityRouter } from "./activity/activity.routes.js";
+import { env } from "./config/env.js";
+import { prisma } from "./config/prisma.js";
 
-export function createApp(redisConnection: IORedis) {
+export function createApp(
+  redisConnection: IORedis,
+  options: {
+    corsOrigins?: string[];
+    verifyDatabaseConnection?: () => Promise<unknown>;
+  } = {}
+) {
   const app = express();
+  const corsOrigins = new Set(options.corsOrigins ?? env.corsOrigins);
 
   // Trust the first proxy hop so express-rate-limit reads the real client IP
   // when deployed behind nginx / ALB / Cloudflare. Remove in development if
@@ -29,7 +38,12 @@ export function createApp(redisConnection: IORedis) {
   app.set("trust proxy", 1);
   
   app.use(helmet());
-  app.use(cors());
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Non-browser clients do not send Origin and are not governed by CORS.
+      callback(null, origin === undefined || corsOrigins.has(origin));
+    }
+  }));
   app.use(express.json());
 
   // ── Background-job queues ─────────────────────────────────────────────────
@@ -47,7 +61,10 @@ export function createApp(redisConnection: IORedis) {
   setOrganizationEmailQueue(emailQueue);
 
   // ── Routes ──────────────────────────────────────────────────────────────────
-  app.use(createHealthRouter(redisConnection));
+  app.use(createHealthRouter(
+    redisConnection,
+    options.verifyDatabaseConnection ?? (() => prisma.$queryRaw`SELECT 1`)
+  ));
   app.use("/auth", createAuthRouter());
   app.use("/organizations", createOrganizationRouter());
   app.use("/users", createUserRouter());
