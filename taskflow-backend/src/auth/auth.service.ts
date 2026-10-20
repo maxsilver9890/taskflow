@@ -283,6 +283,8 @@ export async function verifyRegistration(
       select: { id: true, email: true, name: true, createdAt: true, emailVerified: true }
     });
     await tx.orgMember.create({ data: { userId: user.id, organizationId: org.id, role: "ORG_ADMIN" } });
+    // Keep this deletion in the transaction: a failed account creation must
+    // leave the pending registration available for retry.
     await tx.pendingRegistration.delete({ where: { id: pending.id } });
     return { user, org };
   });

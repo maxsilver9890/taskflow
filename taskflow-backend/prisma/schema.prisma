@@ -185,6 +185,8 @@ model TaskAssignment {
 
 /// Registration data is held here until the email owner proves control of the address.
 /// Password and OTP are stored only as hashes; no User or Organization exists yet.
+/// Abandoned records are pruned by the API cleanup scheduler after the OTP has been
+/// expired for seven days and the row has not been updated during that window.
 model PendingRegistration {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique

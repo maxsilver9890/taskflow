@@ -19,9 +19,76 @@ import {
   refresh,
   register,
   resetPassword,
-  selectOrganization
+  selectOrganization,
+  verifyRegistration
 } from "../../src/auth/auth.service.js";
 import { firebaseAdminAuth } from "../../src/lib/firebase-admin.js";
+
+describe("auth.service — verifyRegistration cleanup", () => {
+  it("deletes the pending row inside the successful account-creation transaction", async () => {
+    const db = makePrismaMock();
+    const pending = {
+      id: "pending-1",
+      email: "alice@example.com",
+      name: "Alice",
+      passwordHash: "stored-password-hash",
+      organizationName: "Acme",
+      otpHash: hashToken("123456"),
+      otpExpiresAt: new Date(Date.now() + 60_000),
+      attempts: 0
+    };
+    const user = { id: "user-1", email: pending.email, name: pending.name, createdAt: new Date(), emailVerified: true };
+    const org = { id: "org-1", name: pending.organizationName };
+    (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(pending);
+    (db.refreshToken.create as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+    const tx = {
+      pendingRegistration: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        delete: vi.fn().mockResolvedValue(pending)
+      },
+      organization: { create: vi.fn().mockResolvedValue(org) },
+      user: { create: vi.fn().mockResolvedValue(user) },
+      orgMember: { create: vi.fn().mockResolvedValue({}) }
+    };
+    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    const result = await verifyRegistration(db, { email: pending.email, otp: "123456" });
+
+    expect(result.user).toMatchObject({ id: user.id, emailVerified: true });
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.pendingRegistration.delete).toHaveBeenCalledWith({ where: { id: pending.id } });
+  });
+
+  it("leaves pending-row deletion uncalled when account creation fails inside the transaction", async () => {
+    const db = makePrismaMock();
+    const pending = {
+      id: "pending-2",
+      email: "bob@example.com",
+      name: "Bob",
+      passwordHash: "stored-password-hash",
+      organizationName: "Acme",
+      otpHash: hashToken("654321"),
+      otpExpiresAt: new Date(Date.now() + 60_000),
+      attempts: 0
+    };
+    (db.pendingRegistration.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(pending);
+    const tx = {
+      pendingRegistration: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        delete: vi.fn()
+      },
+      organization: { create: vi.fn().mockResolvedValue({ id: "org-2", name: "Acme" }) },
+      user: { create: vi.fn().mockResolvedValue({ id: "user-2" }) },
+      orgMember: { create: vi.fn().mockRejectedValue(new Error("membership failure")) }
+    };
+    (db.$transaction as ReturnType<typeof vi.fn>).mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    await expect(verifyRegistration(db, { email: pending.email, otp: "654321" })).rejects.toThrow("membership failure");
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.pendingRegistration.delete).not.toHaveBeenCalled();
+  });
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
